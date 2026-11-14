@@ -1,0 +1,55 @@
+name: Build Windows installer
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: tracker-release
+  cancel-in-progress: false
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Prepare resources
+        shell: python
+        run: |
+          import base64, pathlib, re
+          root = pathlib.Path('.')
+          version = root.joinpath('version.txt').read_text().strip()
+          assert re.fullmatch(r'\d+\.\d+\.\d+', version), 'Use a version such as 1.0.1'
+          source = root.joinpath('index.html').read_text(encoding='utf-8')
+          source, count = re.subn(r"(const PT_UPDATE_CONFIG = .*?version: ')[^']+(')", lambda m: m[1] + version + m[2], source)
+          assert count == 1, 'Update configuration missing'
+          root.joinpath('index.html').write_text(source, encoding='utf-8')
+          root.joinpath('icon.ico').write_bytes(base64.b64decode(root.joinpath('icon.base64').read_text()))
+      - name: Install build dependencies
+        run: python -m pip install -r requirements.txt
+      - name: Build application
+        run: python -m PyInstaller --noconfirm PersonalTracker.spec
+      - name: Build installer
+        shell: pwsh
+        run: |
+          $env:TRACKER_VERSION = (Get-Content version.txt).Trim()
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" setup.iss
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PersonalTracker-Windows
+          path: installer/PersonalTracker_Setup.exe
+          if-no-files-found: error
+      - name: Publish new version
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $version = (Get-Content version.txt).Trim()
+          gh release view "v$version" --repo $env:GITHUB_REPOSITORY *> $null
+          if ($LASTEXITCODE -eq 0) { Write-Host "Version already published. Increase version.txt to publish another update."; exit 0 }
+          gh release create "v$version" installer/PersonalTracker_Setup.exe --repo $env:GITHUB_REPOSITORY --target $env:GITHUB_SHA --title "Personal Tracker $version" --notes "Windows installer. Export a backup before upgrading. Close Personal Tracker before running the installer."
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
