@@ -5,7 +5,7 @@ import sys
 from pathlib import Path
 
 import webview
-from updater import Updater
+from updater import Updater, run_update_helper
 
 
 class ExportAPI(Updater):
@@ -47,6 +47,9 @@ class ExportAPI(Updater):
 
 
 if __name__ == "__main__":
+    if len(sys.argv) > 1 and sys.argv[1] == '--apply-update':
+        sys.exit(run_update_helper(sys.argv[2:]))
+
     resource_dir = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent))
     webview.create_window(
         title="Personal Tracker PRO",
