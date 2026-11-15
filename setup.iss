@@ -19,4 +19,11 @@ Source: "dist\PersonalTracker.exe"; DestDir: "{app}"; Flags: ignoreversion
 Name: "{autoprograms}\Personal Tracker"; Filename: "{app}\PersonalTracker.exe"
 Name: "{autodesktop}\Personal Tracker"; Filename: "{app}\PersonalTracker.exe"
 [Run]
-Filename: "{app}\PersonalTracker.exe"; Description: "Open Personal Tracker"; Flags: nowait postinstall skipifsilent
+Filename: "{app}\PersonalTracker.exe"; Description: "Open Personal Tracker"; Flags: nowait postinstall skipifsilent; Check: not IsAppUpdate
+
+Filename: "{app}\PersonalTracker.exe"; Flags: nowait; Check: IsAppUpdate
+[Code]
+function IsAppUpdate: Boolean;
+begin
+  Result := ExpandConstant('{param:PTUPDATE|0}') = '1';
+end;

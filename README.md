@@ -11,7 +11,7 @@ Download `PersonalTracker_Setup.exe` from this repository's latest release. Clos
 1. Edit `index.html` (or `app.py` for desktop changes).
 2. Increase `version.txt`, for example from `1.0.0` to `1.0.1`.
 3. Commit to `main`. The Windows Actions workflow builds an EXE, creates an installer and publishes a new GitHub Release.
-4. Existing users click **Check for Updates**, download the installer and run it after closing the app.
+4. From v1.0.2 onward, users open the update button, choose **Download update**, then **Install & Restart**. The app downloads internally, verifies the GitHub SHA-256 digest, saves a full localStorage snapshot under `%LOCALAPPDATA%\PersonalTracker\Backups`, launches the installer and closes. The installer restarts the app. The raw snapshot is for recovery and is not the normal Import Backup format. Users on v1.0.0/v1.0.1 need one manual installation to receive this updater.
 
 The workflow sets the HTML version from `version.txt`. Published versions are not replaced; increment the version for every release. Public releases and source files are visible to everyone.
 

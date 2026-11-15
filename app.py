@@ -5,9 +5,17 @@ import sys
 from pathlib import Path
 
 import webview
+from updater import Updater
 
 
-class ExportAPI:
+class ExportAPI(Updater):
+    def install_update(self, storage_backup):
+        result = super().install_update(storage_backup)
+        if result['ok']:
+            import threading
+            threading.Timer(0.8, webview.windows[0].destroy).start()
+        return result
+
     def save_export(self, filename, content):
         if not isinstance(filename, str) or not re.fullmatch(
             r"[a-zA-Z0-9_-]+\.(json|pdf)", filename
@@ -46,6 +54,6 @@ if __name__ == "__main__":
         width=1280,
         height=850,
         min_size=(900, 650),
-        js_api=ExportAPI(),
+        js_api=ExportAPI((resource_dir / 'version.txt').read_text().strip()),
     )
     webview.start(private_mode=False)

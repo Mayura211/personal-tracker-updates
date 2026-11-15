@@ -643,7 +643,7 @@ nav{flex-wrap:wrap}
 <dialog id="pt-update-dialog" class="pt-update-dialog" aria-labelledby="pt-update-heading">
  <div class="pt-update-heading"><h2 id="pt-update-heading">App updates</h2><button type="button" aria-label="Close updates" onclick="document.getElementById('pt-update-dialog').close()">×</button></div>
  <p id="pt-update-status" role="status" aria-live="polite">Checking for updates…</p>
- <div class="pt-update-actions"><button type="button" id="pt-update-retry" onclick="ptCheckUpdates()">Check again</button><a id="pt-update-link" class="btn" hidden target="_blank" rel="noopener noreferrer">Download update</a></div>
+ <progress id="pt-update-progress" max="100" value="0" hidden aria-label="Update download progress" style="width:100%;height:9px;margin-bottom:16px;accent-color:var(--green)"></progress><div class="pt-update-actions"><button type="button" id="pt-update-retry" onclick="ptCheckUpdates()">Check again</button><button type="button" id="pt-update-link" hidden onclick="ptDownloadInsideApp()">Download update</button></div>
 </dialog>
 <header>
  <div class="account-actions"><span id="signedInAs"></span><button type="button" onclick="logoutUser()">Log out</button></div><button id="themeBtn" class="theme-btn" type="button" aria-pressed="false">☾ Dark mode</button>
@@ -2176,7 +2176,7 @@ if(active&&ptAccounts()[active]){ptCurrentUser=active;ptLoadUser(active);ptEnter
 
 </script>
 <script>
-const PT_UPDATE_CONFIG = { owner: 'Mayura211', repo: 'personal-tracker-updates', version: '1.0.1' };
+const PT_UPDATE_CONFIG = { owner: 'Mayura211', repo: 'personal-tracker-updates', version: '1.0.2' };
 let ptUpdateRequest = null;
 let ptUpdateGeneration = 0;
 let ptLastUpdateAttempt = 0;
@@ -2203,6 +2203,7 @@ function ptUpdateState(state, message) {
  document.getElementById('pt-update-retry').disabled = state === 'checking';
 }
 function ptUpdateOffline() {
+ if (ptNativeBusy) return;
  ptUpdateGeneration++;
  if (ptUpdateRequest) ptUpdateRequest.abort();
  ptUpdateRequest = null;
@@ -2210,6 +2211,7 @@ function ptUpdateOffline() {
  ptUpdateState('offline', 'You are offline. Updates will be checked when you reconnect.');
 }
 async function ptCheckUpdates() {
+ if (ptNativeBusy) return;
  if (!navigator.onLine) { ptUpdateOffline(); return; }
  if (ptUpdateRequest) return;
  const generation = ++ptUpdateGeneration;
@@ -2234,9 +2236,11 @@ async function ptCheckUpdates() {
   if (!asset) throw new Error('A new release is being prepared. Please check again later.');
   const url = new URL(asset.browser_download_url);
   if (!url.href.startsWith(`https://github.com/${owner}/${repo}/releases/download/`)) throw new Error('The update download could not be verified.');
-  link.href = url.href;
+  link.onclick = ptDownloadInsideApp;
+  link.textContent = "Download update";
+  link.disabled = false;
   link.hidden = false;
-  ptUpdateState('available', `${release.tag_name} is ready. Export a backup, download the installer, close this app and run the installer.`);
+  ptUpdateState('available', `${release.tag_name} is ready. Download the update here, then choose Install & Restart. A local data backup is saved before installation.`);
  } catch (error) {
   if (generation === ptUpdateGeneration) {
    ptUpdateState(navigator.onLine ? 'error' : 'offline', error.name === 'AbortError' ? 'The update check timed out. Please try again.' : error.message);
@@ -2250,6 +2254,87 @@ function ptOpenUpdates() {
  document.getElementById('pt-update-dialog').showModal();
  if (document.getElementById('pt-update-button').dataset.state === 'error') ptCheckUpdates();
 }
+let ptNativeBusy = false;
+let ptNativePoll = null;
+async function ptDownloadInsideApp() {
+ const bridge = window.pywebview?.api;
+ if (!bridge?.start_update_download) {
+  document.getElementById('pt-update-status').textContent = 'Open this feature in the installed Windows app.';
+  return;
+ }
+ const button = document.getElementById('pt-update-link');
+ ptNativeBusy = true;
+ button.disabled = true;
+ document.getElementById('pt-update-retry').disabled = true;
+ try {
+  await bridge.start_update_download();
+  await ptPollNativeDownload();
+ } catch (error) {
+  ptNativeBusy = false;
+  button.disabled = false;
+  document.getElementById('pt-update-retry').disabled = false;
+  document.getElementById('pt-update-status').textContent = 'Could not start the download. Please try again.';
+ }
+}
+async function ptPollNativeDownload() {
+ const button = document.getElementById('pt-update-link');
+ const progress = document.getElementById('pt-update-progress');
+ try {
+  const state = await window.pywebview.api.update_download_status();
+  document.getElementById('pt-update-status').textContent = state.message;
+  progress.hidden = false;
+  progress.value = state.progress;
+  if (state.status === 'downloading') {
+   button.textContent = `Downloading ${state.progress}%`;
+   ptNativePoll = setTimeout(ptPollNativeDownload, 500);
+   return;
+  }
+  if (state.status === 'ready') {
+   button.disabled = false;
+   button.textContent = 'Install & Restart';
+   button.onclick = ptInstallInsideApp;
+   return;
+  }
+  ptNativeBusy = false;
+  button.disabled = false;
+  button.textContent = 'Retry download';
+  document.getElementById('pt-update-retry').disabled = false;
+  if (state.status === 'current') { button.hidden = true; progress.hidden = true; }
+ } catch (error) {
+  ptNativeBusy = false;
+  button.disabled = false;
+  button.textContent = 'Retry download';
+  document.getElementById('pt-update-retry').disabled = false;
+  document.getElementById('pt-update-status').textContent = 'Could not read download progress. Retry to reconnect.';
+ }
+}
+async function ptInstallInsideApp() {
+ const button = document.getElementById('pt-update-link');
+ button.disabled = true;
+ try {
+  const snapshot = {};
+  for (let i = 0; i < localStorage.length; i++) {
+   const key = localStorage.key(i);
+   snapshot[key] = localStorage.getItem(key);
+  }
+  const result = await window.pywebview.api.install_update(JSON.stringify(snapshot));
+  if (!result.ok) throw new Error(result.message);
+  button.textContent = 'Installing…';
+  document.getElementById('pt-update-status').textContent = 'Your data backup is saved. Installing the update and restarting…';
+ } catch (error) {
+  button.disabled = false;
+  document.getElementById('pt-update-status').textContent = error.message || 'Could not install. Please try again.';
+  // Reconnect to the native state; a rejected checksum requires a new download.
+  const state = await window.pywebview.api.update_download_status().catch(() => null);
+  if (state?.status === 'error') {
+   ptNativeBusy = false;
+   button.textContent = 'Retry download';
+   button.onclick = ptDownloadInsideApp;
+   document.getElementById('pt-update-retry').disabled = false;
+  }
+ }
+}
+
 window.addEventListener('online', ptCheckUpdates);
 window.addEventListener('offline', ptUpdateOffline);
 document.addEventListener('visibilitychange', () => {
