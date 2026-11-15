@@ -16,6 +16,21 @@ API_URL = f'https://api.github.com/repos/{REPOSITORY}/releases/latest'
 MAX_DOWNLOAD = 200 * 1024 * 1024
 
 
+def clean_process_environment():
+    """Do not pass a soon-to-be-deleted PyInstaller _MEI path to the installer.
+
+    The installer starts the next PersonalTracker.exe as a child; without this
+    reset, the new onefile app can try loading python311.dll from the OLD app's
+    extraction directory after it has already been deleted.
+    """
+    environment = os.environ.copy()
+    for name in tuple(environment):
+        if name.startswith('_PYI_') or name == '_MEIPASS2':
+            environment.pop(name, None)
+    environment['PYINSTALLER_RESET_ENVIRONMENT'] = '1'
+    return environment
+
+
 def version_tuple(value):
     if not re.fullmatch(r'v?\d+\.\d+\.\d+', value):
         raise ValueError('Invalid release version.')
@@ -135,8 +150,7 @@ class Updater:
             # waits for its PyInstaller child and bootloader, then starts Setup.
             helper = self.directory / f'PersonalTracker_UpdateHelper_{time.time_ns()}.exe'
             shutil.copy2(sys.executable, helper)
-            env = os.environ.copy()
-            env['PYINSTALLER_RESET_ENVIRONMENT'] = '1'
+            env = clean_process_environment()
             subprocess.Popen(
                 [str(helper), '--apply-update', str(os.getpid()), str(os.getppid()),
                  str(self.installer.resolve()), self.digest],
@@ -222,6 +236,7 @@ def run_update_helper(arguments):
             [str(installer), '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART',
              '/CLOSEAPPLICATIONS', '/PTUPDATE=2', f'/LOG={install_log}'],
             cwd=str(directory),
+            env=clean_process_environment(),
             timeout=900,
             check=False,
         )

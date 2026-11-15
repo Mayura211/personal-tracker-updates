@@ -20,10 +20,22 @@ Source: "dist\PersonalTracker.exe"; DestDir: "{app}"; Flags: ignoreversion
 Name: "{autoprograms}\Personal Tracker"; Filename: "{app}\PersonalTracker.exe"
 Name: "{autodesktop}\Personal Tracker"; Filename: "{app}\PersonalTracker.exe"
 [Run]
-Filename: "{app}\PersonalTracker.exe"; Description: "Open Personal Tracker"; Flags: nowait postinstall skipifsilent; Check: not IsAppUpdate
+Filename: "{app}\PersonalTracker.exe"; Description: "Open Personal Tracker"; Flags: nowait postinstall skipifsilent; Check: not IsAppUpdate; BeforeInstall: ResetFrozenAppEnvironment
 
-Filename: "{app}\PersonalTracker.exe"; Flags: nowait; Check: IsAppUpdate
+Filename: "{app}\PersonalTracker.exe"; Flags: nowait; Check: IsAppUpdate; BeforeInstall: ResetFrozenAppEnvironment
 [Code]
+{ When Setup is launched by a PyInstaller onefile executable, it inherits
+  the old _PYI_APPLICATION_HOME_DIR from that instance. Reset the environment
+  just before [Run] starts the freshly installed executable. }
+function SetEnvironmentVariableW(lpName: string; lpValue: string): Boolean;
+  external 'SetEnvironmentVariableW@kernel32.dll stdcall';
+
+procedure ResetFrozenAppEnvironment;
+begin
+  if not SetEnvironmentVariableW('PYINSTALLER_RESET_ENVIRONMENT', '1') then
+    RaiseException('Could not reset the application launch environment.');
+end;
+
 function IsAppUpdate: Boolean;
 begin
   Result := (ExpandConstant('{param:PTUPDATE|0}') = '1') or
