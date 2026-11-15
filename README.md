@@ -2,6 +2,16 @@
 
 Windows habit, study and sleep tracker with GitHub release checking.
 
+## What's new in v1.0.5
+
+- Independent Bar Only / Line Only / Both chart styles for Study and Sleep Performance Analysis.
+- Study Performance: customizable daily study goal with a dashed reference line. For weekly views this is scaled to seven days; for monthly/yearly totals it uses a 30-day equivalent.
+- Sleep Performance: customizable horizontal bad / good guide / excellent reference lines (6h / 7h / 8h defaults).
+- Chart preferences are saved separately for each signed-in account and do not change study or sleep history.
+- Study and Sleep PDF exports now include each report period's duration total, overall total, current calendar month total and monthly totals at the end of the report.
+
+The chart reference lines are display guides only and do not rewrite sleep classifications stored in existing records.
+
 ## Download
 
 Download `PersonalTracker_Setup.exe` from this repository's latest release. Close the running app before installing. Windows may show an unsigned-app prompt because this build has no code-signing certificate.

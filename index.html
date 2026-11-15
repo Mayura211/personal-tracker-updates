@@ -603,6 +603,17 @@ nav{flex-wrap:wrap}
 #pt-update-link[hidden]{display:none}
 @keyframes pt-update-spin{to{transform:rotate(360deg)}}
 @media(prefers-reduced-motion:reduce){.pt-update-pill[data-state="checking"] #pt-update-icon{animation:none}.pt-update-pill{transition:none}}
+/* Study and Sleep chart customization */
+.pt-chart-tools{display:flex;flex-direction:column;gap:12px;background:var(--s2);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin:0 0 16px}
+.pt-chart-mode-toolbar,.pt-chart-goal{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.pt-chart-mode-toolbar{justify-content:flex-end}
+.pt-chart-mode-label,.pt-chart-goal label,.pt-chart-goal strong{font-size:12px;font-weight:700;color:var(--dark)}
+.pt-chart-mode-toolbar button,.pt-chart-goal button{padding:8px 12px;font-size:12px;border-radius:8px}
+.pt-chart-goal input{width:76px;padding:7px 8px;font-size:12px;text-align:center;border-radius:7px}
+.pt-chart-goal span,.pt-chart-goal small{font-size:11px;color:var(--c-text)}
+.pt-chart-goal small{flex-basis:100%;line-height:1.4}
+.pt-chart-message{min-height:0;font-size:11px;font-weight:600;color:var(--good)}
+
 </style>
 </head>
 <body>
@@ -761,6 +772,23 @@ nav{flex-wrap:wrap}
    <button onclick="setStudyView('monthly')" id="smonthly">Monthly</button>
    <button onclick="setStudyView('yearly')" id="syearly">Yearly</button>
   </div>
+
+  <div class="pt-chart-tools">
+    <div class="pt-chart-mode-toolbar" role="group" aria-label="Study chart display">
+      <span class="pt-chart-mode-label">Chart style</span>
+      <button type="button" data-pt-chart="study" data-pt-style="bar" onclick="ptSetChartStyle('study','bar')">Bar Only</button>
+      <button type="button" data-pt-chart="study" data-pt-style="line" onclick="ptSetChartStyle('study','line')">Line Only</button>
+      <button type="button" data-pt-chart="study" data-pt-style="both" onclick="ptSetChartStyle('study','both')">Both</button>
+    </div>
+    
+    <div class="pt-chart-goal">
+      <label for="pt-study-goal">Average Study Goal</label>
+      <input id="pt-study-goal" type="number" min="0.25" max="24" step="0.25" value="2" onchange="ptApplyStudyGoal()">
+      <span>hours per day</span>
+      <small>Dashed reference line; weekly and monthly totals use the equivalent daily goal.</small>
+    </div>
+    <div class="pt-chart-message" id="pt-study-chart-message" role="status" aria-live="polite"></div>
+  </div>
   <div class="chart"><canvas id="studyChart"></canvas></div>
  </div>
 
@@ -828,6 +856,24 @@ nav{flex-wrap:wrap}
    <button onclick="setSleepView('weekly')" id="lweekly">Weekly</button>
    <button onclick="setSleepView('monthly')" id="lmonthly">Monthly</button>
    <button onclick="setSleepView('yearly')" id="lyearly">Yearly</button>
+  </div>
+
+  <div class="pt-chart-tools">
+    <div class="pt-chart-mode-toolbar" role="group" aria-label="Sleep chart display">
+      <span class="pt-chart-mode-label">Chart style</span>
+      <button type="button" data-pt-chart="sleep" data-pt-style="bar" onclick="ptSetChartStyle('sleep','bar')">Bar Only</button>
+      <button type="button" data-pt-chart="sleep" data-pt-style="line" onclick="ptSetChartStyle('sleep','line')">Line Only</button>
+      <button type="button" data-pt-chart="sleep" data-pt-style="both" onclick="ptSetChartStyle('sleep','both')">Both</button>
+    </div>
+    
+    <div class="pt-chart-goal pt-sleep-goals">
+      <strong>Sleep reference lines</strong>
+      <label for="pt-sleep-low">Bad below</label><input id="pt-sleep-low" type="number" min="0.25" max="23" step="0.25" value="6">
+      <label for="pt-sleep-mid">Good guide</label><input id="pt-sleep-mid" type="number" min="0.50" max="23.5" step="0.25" value="7">
+      <label for="pt-sleep-high">Excellent from</label><input id="pt-sleep-high" type="number" min="1" max="24" step="0.25" value="8">
+      <span>hours per night</span><button type="button" onclick="ptApplySleepGuides()">Apply Lines</button>
+    </div>
+    <div class="pt-chart-message" id="pt-sleep-chart-message" role="status" aria-live="polite"></div>
   </div>
   <div class="chart"><canvas id="sleepChart"></canvas></div>
  </div>
@@ -1455,6 +1501,140 @@ function studySeries(records,view,y,m){
   values:Array.from({length:12},(_,i)=>
    sum(studies.filter(x=>dateParts(x.date).y===y&&dateParts(x.date).m===i).map(x=>x.hours)))};
 }
+
+// User-specific chart display settings; existing study/sleep data is unchanged.
+const PT_CHART_DEFAULTS=Object.freeze({studyStyle:'both',sleepStyle:'both',studyGoal:2,sleepLow:6,sleepMid:7,sleepHigh:8});
+let ptChartPrefs={...PT_CHART_DEFAULTS};
+function ptChartKey(){
+ return 'pt_chart_preferences_'+(typeof ptCurrentUser==='string'&&ptCurrentUser?ptCurrentUser:'guest');
+}
+function ptChartValidMode(mode){return ['bar','line','both'].includes(mode);}
+function ptChartValidNumber(value,low,high){
+ return typeof value==='number'&&Number.isFinite(value)&&value>=low&&value<=high;
+}
+function ptLoadChartPrefs(){
+ ptChartPrefs={...PT_CHART_DEFAULTS};
+ try{
+  const prefs=JSON.parse(localStorage.getItem(ptChartKey())||'{}');
+  if(prefs&&typeof prefs==='object'&&!Array.isArray(prefs)){
+   for(const key of ['studyStyle','sleepStyle'])if(ptChartValidMode(prefs[key]))ptChartPrefs[key]=prefs[key];
+   if(ptChartValidNumber(prefs.studyGoal,.25,24))ptChartPrefs.studyGoal=prefs.studyGoal;
+   if(ptChartValidNumber(prefs.sleepLow,.25,23)&&ptChartValidNumber(prefs.sleepMid,.5,23.5)&&ptChartValidNumber(prefs.sleepHigh,1,24)
+      &&prefs.sleepLow<prefs.sleepMid&&prefs.sleepMid<prefs.sleepHigh){
+     ptChartPrefs.sleepLow=prefs.sleepLow;ptChartPrefs.sleepMid=prefs.sleepMid;ptChartPrefs.sleepHigh=prefs.sleepHigh;
+   }
+  }
+ }catch(e){}
+ const inputs=[['pt-study-goal',ptChartPrefs.studyGoal],['pt-sleep-low',ptChartPrefs.sleepLow],['pt-sleep-mid',ptChartPrefs.sleepMid],['pt-sleep-high',ptChartPrefs.sleepHigh]];
+ for(const [id,value] of inputs){const input=$(id);if(input)input.value=value;}
+ ptSyncChartStyle('study');ptSyncChartStyle('sleep');
+ const m1=$('pt-study-chart-message'),m2=$('pt-sleep-chart-message');
+ if(m1)m1.textContent='';if(m2)m2.textContent='';
+}
+function ptSaveChartPrefs(){try{localStorage.setItem(ptChartKey(),JSON.stringify(ptChartPrefs));}catch(e){}}
+function ptSyncChartStyle(kind){
+ const current=ptChartPrefs[kind+'Style'];
+ document.querySelectorAll('[data-pt-chart="'+kind+'"]').forEach(button=>{
+  const active=button.dataset.ptStyle===current;
+  button.classList.toggle('primary',active);
+  button.setAttribute('aria-pressed',String(active));
+ });
+}
+function ptChartMessage(kind,message,error=false){
+ const n=$('pt-'+kind+'-chart-message');
+ if(n){n.textContent=message;n.style.color=error?'var(--bad)':'var(--good)';}
+}
+function ptSetChartStyle(kind,style){
+ if(!['study','sleep'].includes(kind)||!ptChartValidMode(style))return;
+ ptChartPrefs[kind+'Style']=style;ptSaveChartPrefs();ptSyncChartStyle(kind);
+ if(kind==='study')renderStudy();else renderSleep();
+}
+function ptApplyStudyGoal(){
+ const goal=Number($('pt-study-goal').value);
+ if(!ptChartValidNumber(goal,.25,24)){ptChartMessage('study','Choose a study goal from 0.25 to 24 hours.',true);return;}
+ ptChartPrefs.studyGoal=goal;ptSaveChartPrefs();
+ ptChartMessage('study','Saved daily study goal: '+fmtTime(goal));
+ renderStudy();
+}
+function ptApplySleepGuides(){
+ const low=Number($('pt-sleep-low').value),mid=Number($('pt-sleep-mid').value),high=Number($('pt-sleep-high').value);
+ if(!ptChartValidNumber(low,.25,23)||!ptChartValidNumber(mid,.5,23.5)||!ptChartValidNumber(high,1,24)||!(low<mid&&mid<high)){
+  ptChartMessage('sleep','Use three increasing sleep reference times, from 0.25 to 24 hours.',true);return;
+ }
+ ptChartPrefs.sleepLow=low;ptChartPrefs.sleepMid=mid;ptChartPrefs.sleepHigh=high;
+ ptSaveChartPrefs();ptChartMessage('sleep','Sleep reference lines saved.');renderSleep();
+}
+function ptPerformanceGuides(kind){
+ if(kind==='sleep')return [
+  {value:ptChartPrefs.sleepLow,label:'Bad below '+fmtTime(ptChartPrefs.sleepLow),color:'#c65d55'},
+  {value:ptChartPrefs.sleepMid,label:'Good guide '+fmtTime(ptChartPrefs.sleepMid),color:'#b18b35'},
+  {value:ptChartPrefs.sleepHigh,label:'Excellent '+fmtTime(ptChartPrefs.sleepHigh)+'+',color:'#477b55'}
+ ];
+ const multiplier=studyView==='daily'?1:studyView==='weekly'?7:30;
+ const value=ptChartPrefs.studyGoal*multiplier;
+ return [{value,label:'Study goal '+fmtTime(value),color:'#b18b35'}];
+}
+const ptReferencePlugin={
+ id:'ptReferenceLines',
+ afterDatasetsDraw(chart,args,options){
+  const guides=Array.isArray(options?.lines)?options.lines:[];
+  if(!guides.length||!chart.scales.y||!chart.chartArea)return;
+  const {ctx,chartArea}=chart,y=chart.scales.y;
+  ctx.save();
+  ctx.font='600 10px "Plus Jakarta Sans",Arial,sans-serif';
+  for(const g of guides){
+   const py=y.getPixelForValue(g.value);
+   if(!Number.isFinite(py)||py<chartArea.top+3||py>chartArea.bottom-3)continue;
+   ctx.strokeStyle=g.color;ctx.lineWidth=1.5;ctx.setLineDash([6,4]);ctx.beginPath();
+   ctx.moveTo(chartArea.left,py);ctx.lineTo(chartArea.right,py);ctx.stroke();ctx.setLineDash([]);
+   const label=String(g.label),w=ctx.measureText(label).width;
+   const x=Math.max(chartArea.left+4,chartArea.right-w-9);
+   const textY=Math.max(chartArea.top+8,Math.min(chartArea.bottom-10,py-12));
+   ctx.globalAlpha=.92;ctx.fillStyle=cssVar('--surface');ctx.fillRect(x-4,textY-2,w+8,14);
+   ctx.globalAlpha=1;ctx.fillStyle=g.color;ctx.fillText(label,x,textY+8);
+  }
+  ctx.restore();
+ }
+};
+if(typeof Chart!=='undefined')Chart.register(ptReferencePlugin);
+function ptRenderPerformanceChart(kind,series){
+ if(typeof Chart==='undefined')return;
+ const id=kind+'Chart';
+ if(charts[id])charts[id].destroy();
+ const mode=ptChartPrefs[kind+'Style'];
+ const guides=ptPerformanceGuides(kind);
+ const values=series.values.filter(v=>v!==null&&v!==undefined&&Number.isFinite(v));
+ const axis=timeScale([...values,...guides.map(g=>g.value),kind==='sleep'?10:0],kind==='sleep'?10:0,kind==='study'?'Study duration':'Sleep duration');
+ const color=cssVar('--c-line');
+ const chartView=kind==='study'?studyView:sleepView;
+ charts[id]=new Chart($(id),{
+  type:'bar',
+  data:{labels:series.labels,datasets:[
+   {type:'bar',label:kind==='study'?'Study Duration (Bar)':'Sleep Duration (Bar)',
+    data:series.values,hidden:mode==='line',backgroundColor:'rgba(85,117,86,0.35)',
+    borderColor:color,borderWidth:1,borderRadius:4,order:2},
+   {type:'line',label:kind==='study'?'Study Trend (Line)':'Sleep Trend (Line)',
+    data:series.values,hidden:mode==='bar',borderColor:color,backgroundColor:'transparent',
+    borderWidth:2.5,tension:.35,pointRadius:3,pointHoverRadius:6,
+    pointBackgroundColor:color,pointBorderColor:'#fff',pointBorderWidth:1,order:1}
+  ]},
+  options:{
+   responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
+   plugins:{
+    legend:{display:false},ptReferenceLines:{lines:guides},
+    tooltip:{enabled:true,filter:item=>mode==='both'?item.datasetIndex===0:true,
+      callbacks:{label:c=>' '+(kind==='study'?'Study Duration: ':'Sleep Duration: ')+fmtTime(c.parsed.y)}}
+   },
+   scales:{
+    x:{grid:{color:cssVar('--c-grid')},
+       ticks:{color:cssVar('--c-text'),autoSkip:true,maxTicksLimit:12,maxRotation:0},
+       title:{display:true,text:chartView==='daily'?'Day':chartView==='weekly'?'Week':'Month'}},
+    y:{...axis,grid:{color:cssVar('--c-grid')},ticks:{...axis.ticks,color:cssVar('--c-text')}}
+   }
+  }
+ });
+}
+
 function renderStudy(){
  let y=+$('studyYear').value,m=+$('studyMonth').value;
  let records=studyFiltered();
@@ -1468,57 +1648,7 @@ function renderStudy(){
  $('studyBest').textContent=best?hoursText(best[1]):'—';
  let series=studySeries(records,studyView,y,m);
 
- if(typeof Chart!=='undefined'){
-  if(charts.studyChart)charts.studyChart.destroy();
-  const vals=series.values.filter(v=>v!==null&&v!==undefined);
-  const axis=timeScale(vals,0,'Study duration');
-  charts.studyChart=new Chart($('studyChart'),{
-   type:'bar',
-   data:{
-    labels:series.labels,
-    datasets:[
-     {
-      type:'bar',
-      label:'Study Duration (Bar)',
-      data:series.values,
-      backgroundColor:'rgba(85,117,86,0.35)',
-      borderColor:'#557556',
-      borderWidth:1,
-      borderRadius:4,
-      order:2
-     },
-     {
-      type:'line',
-      label:'Study Trend (Line)',
-      data:series.values,
-      borderColor:'#557556',
-      backgroundColor:'transparent',
-      borderWidth:2.5,
-      tension:0.35,
-      pointRadius:3,
-      pointHoverRadius:6,
-      pointBackgroundColor:'#557556',
-      pointBorderColor:'#fff',
-      pointBorderWidth:1,
-      order:1
-     }
-    ]
-   },
-   options:{
-    responsive:true,
-    maintainAspectRatio:false,
-    interaction:{mode:'index',intersect:false},
-    plugins:{
-     legend:{display:false},
-     tooltip:{enabled:true,callbacks:{label:c=>' Study Duration: '+fmtTime(c.parsed.y)}}
-    },
-    scales:{
-     x:{grid:{color:cssVar('--c-grid')},ticks:{color:cssVar('--c-text'),autoSkip:true,maxTicksLimit:12,maxRotation:0},title:{display:true,text:studyView==='daily'?'Day':studyView==='weekly'?'Week':'Month'}},
-     y:{...axis,grid:{color:cssVar('--c-grid')},ticks:{...axis.ticks,color:cssVar('--c-text')}}
-    }
-   }
-  });
- }
+ ptRenderPerformanceChart('study',series);
 
  renderStudyHistory();
  $('studyRecords').innerHTML=records.map(x=>`
@@ -1639,9 +1769,7 @@ function renderSleep(){
  $('sleepGood').textContent=records.filter(x=>x.level==='good').length;
  $('sleepDays').textContent=records.length;
  let series=sleepSeries(records,sleepView,y,m);
- makeChart('sleepChart','line',series.labels,series.values,{
-  label:'Sleep time',time:true,scales:{y:timeScale(series.values,10,'Sleep time')}
- });
+ ptRenderPerformanceChart('sleep',series);
  renderSleepHistory();
  $('sleepRecords').innerHTML=records.map(x=>{
   let color=x.level==='low'?'red':x.level==='normal'?'yellow':'green';
@@ -2040,7 +2168,7 @@ async function loginUser(){
 function ptEnterApp(){
  sessionStorage.setItem('pt_active_user',ptCurrentUser);
  $('authGate').style.display='none';$('trackerApp').hidden=false;$('signedInAs').textContent='@'+ptCurrentUser;
- setupSelectors();setupAch();themeBtn();nav();renderHabits();renderStudy();renderSleep();evaluateAchievements();
+ setupSelectors();ptLoadChartPrefs();setupAch();themeBtn();nav();renderHabits();renderStudy();renderSleep();evaluateAchievements();
 }
 function logoutUser(){ptPersist();$('toasts').replaceChildren();sessionStorage.removeItem('pt_active_user');ptCurrentUser=null;$('trackerApp').hidden=true;$('authGate').style.display='grid';$('loginPass').value='';showLogin();ptErr('')}
 saveAll=function(){ptPersist();if(ptCurrentUser)evaluateAchievements()};
@@ -2152,31 +2280,71 @@ exportData=function(){
 };
 
 function exportHistoryPDF(type){
- if(!window.jspdf?.jsPDF){alert('PDF component unavailable. Check your internet connection.');return}
- const doc=new window.jspdf.jsPDF({orientation:'landscape',unit:'mm',format:'a4'}),mode=$(type+'HistoryGroup').value;
- const rs=[...(type==='study'?studies:sleeps)].sort((a,b)=>a.date.localeCompare(b.date)),groups=ptGroups(rs,mode);
- let y=30;
- function header(){doc.setFontSize(16);doc.text(type==='study'?'Study History Report':'Sleep History Report',14,15);doc.setFontSize(9);doc.text(`Account: ${ptCurrentUser} | Group: ${mode} | Generated: ${new Date().toLocaleString()}`,14,22)}
+ if(!window.jspdf?.jsPDF){alert('PDF component unavailable.');return;}
+ const doc=new window.jspdf.jsPDF({orientation:'landscape',unit:'mm',format:'a4'});
+ const mode=$(type+'HistoryGroup').value;
+ const rs=[...(type==='study'?studies:sleeps)].sort((a,b)=>a.date.localeCompare(b.date));
+ const groups=ptGroups(rs,mode),grandTotal=sum(rs.map(x=>x.hours));
+ const monthKey=today().slice(0,7);
+ const currentTotal=sum(rs.filter(x=>x.date.slice(0,7)===monthKey).map(x=>x.hours));
+ let y=38;
+ function header(){
+  doc.setFont(undefined,'normal');doc.setFontSize(16);
+  doc.text(type==='study'?'Study History Report':'Sleep History Report',14,15);
+  doc.setFontSize(9);
+  doc.text('Account: '+ptCurrentUser+' | Group: '+mode+' | Generated: '+new Date().toLocaleString(),14,22);
+  doc.setFont(undefined,'bold');
+  doc.text('All records total: '+hoursText(grandTotal)+'   |   This month ('+monthKey+') total: '+hoursText(currentTotal),14,29);
+ }
+ function pageCheck(limit){if(y>limit){doc.addPage();header();y=38;}}
+ function row(cells,widths,bold){
+  pageCheck(190);doc.setFont(undefined,bold?'bold':'normal');doc.setFontSize(8);
+  let x=14;cells.forEach((v,i)=>{
+   doc.text(String(v??'').slice(0,65),x,y,{maxWidth:widths[i]-3});x+=widths[i];
+  });
+  doc.setDrawColor(225);doc.line(14,y+2,277,y+2);y+=7;
+ }
  header();
- groups.forEach(([k,a])=>{
-  if(y>185){doc.addPage();header();y=30}
-  const summary=type==='study'?`${a.length} sessions | Total ${hoursText(sum(a.map(x=>x.hours)))}`:`${a.length} nights | Average ${hoursText(average(a.map(x=>x.hours)))} | Good ${a.filter(x=>x.level==='good').length}`;
-  doc.setFont(undefined,'bold');doc.setFontSize(10);doc.text(`${ptGroupLabel(k,mode)} — ${summary}`,14,y);y+=7;
-  const heads=type==='study'?['Date','Subject','Start','End','Duration']:['Date','Sleep','Wake','Duration','Category'];
-  const widths=type==='study'?[35,105,35,35,35]:[45,45,45,45,65],x0=14,rowH=7;
-  const row=(cells,bold=false)=>{if(y>190){doc.addPage();header();y=30}doc.setFont(undefined,bold?'bold':'normal');doc.setFontSize(8);let x=x0;cells.forEach((v,i)=>{doc.text(String(v??'').slice(0,65),x,y,{maxWidth:widths[i]-3});x+=widths[i]});doc.setDrawColor(225);doc.line(x0,y+2,277,y+2);y+=rowH};
-  row(heads,true);a.forEach(x=>row(type==='study'?[x.date,x.subject,x.start,x.end,hoursText(x.hours)]:[x.date,x.start,x.end,hoursText(x.hours),x.level==='low'?'Low (<6h)':x.level==='normal'?'Normal (6–8h)':'Good (>8h)']));
+ if(!groups.length){doc.setFontSize(10);doc.text('No records saved yet.',14,y);y+=10;}
+ groups.forEach(([key,records])=>{
+  pageCheck(177);
+  const total=sum(records.map(x=>x.hours));
+  const caption=type==='study'
+   ?records.length+' sessions | Total: '+hoursText(total)
+   :records.length+' nights | Total: '+hoursText(total)+' | Average: '+hoursText(average(records.map(x=>x.hours)));
+  doc.setFont(undefined,'bold');doc.setFontSize(10);
+  doc.text(ptGroupLabel(key,mode)+' - '+caption,14,y);y+=7;
+  const isStudy=type==='study';
+  const heads=isStudy?['Date','Subject','Start','End','Duration']:['Date','Sleep','Wake','Duration','Category'];
+  const widths=isStudy?[35,105,35,35,35]:[45,45,45,45,65];
+  row(heads,widths,true);
+  records.forEach(record=>{
+   if(isStudy)row([record.date,record.subject,record.start,record.end,hoursText(record.hours)],widths,false);
+   else row([record.date,record.start,record.end,hoursText(record.hours),record.level==='low'?'Low':record.level==='normal'?'Normal':'Good'],widths,false);
+  });
   y+=5;
  });
- savePdf(doc,`${type}-history-${mode}-${today()}.pdf`);
+ const monthTotals=new Map();
+ for(const record of rs){
+  const month=record.date.slice(0,7),entry=monthTotals.get(month)||{hours:0,count:0};
+  entry.hours+=record.hours;entry.count++;monthTotals.set(month,entry);
+ }
+ pageCheck(162);y+=4;doc.setFont(undefined,'bold');doc.setFontSize(12);
+ doc.text('Monthly Totals',14,y);y+=9;
+ if(!monthTotals.size){doc.setFont(undefined,'normal');doc.setFontSize(9);doc.text('No months recorded.',14,y);y+=8;}
+ [...monthTotals].sort(([a],[b])=>b.localeCompare(a)).forEach(([month,entry])=>{
+  pageCheck(189);doc.setFont(undefined,'normal');doc.setFontSize(10);
+  doc.text(month+'  |  Total: '+hoursText(entry.hours)+'  |  '+entry.count+(type==='study'?' sessions':' nights'),14,y);
+  y+=7;
+ });
+ savePdf(doc,type+'-history-'+mode+'-'+today()+'.pdf');
 }
-
 const active= sessionStorage.getItem('pt_active_user');
 if(active&&ptAccounts()[active]){ptCurrentUser=active;ptLoadUser(active);ptEnterApp()}
 
 </script>
 <script>
-const PT_UPDATE_CONFIG = { owner: 'Mayura211', repo: 'personal-tracker-updates', version: '1.0.2' };
+const PT_UPDATE_CONFIG = { owner: 'Mayura211', repo: 'personal-tracker-updates', version: '1.0.5' };
 let ptUpdateRequest = null;
 let ptUpdateGeneration = 0;
 let ptLastUpdateAttempt = 0;
