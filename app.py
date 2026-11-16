@@ -18,7 +18,7 @@ class ExportAPI(Updater):
 
     def save_export(self, filename, content):
         if not isinstance(filename, str) or not re.fullmatch(
-            r"[a-zA-Z0-9_-]+\.(json|pdf)", filename
+            r"[a-zA-Z0-9_-]+\.(json|pdf|csv)", filename
         ):
             raise ValueError("Invalid export filename.")
 
@@ -27,6 +27,11 @@ class ExportAPI(Updater):
             if not payload.startswith(b"%PDF-"):
                 raise ValueError("Invalid PDF data.")
             file_type = "PDF files (*.pdf)"
+        elif filename.endswith(".csv"):
+            if not isinstance(content, str) or len(content) > 10_000_000:
+                raise ValueError("Invalid CSV content.")
+            payload = content.encode("utf-8")
+            file_type = "CSV files (*.csv)"
         else:
             if not isinstance(json.loads(content), dict):
                 raise ValueError("Invalid backup data.")
