@@ -2884,16 +2884,16 @@ function ptAnaPdfHeader(doc,title,subtitle,mode){
  doc.setTextColor(255,255,255);doc.setFontSize(20);doc.text(title,14,25);
  doc.setFont('helvetica','normal');doc.setTextColor(219,238,221);doc.setFontSize(9);doc.text(subtitle,14,33);
  doc.setTextColor(93,111,97);doc.setFontSize(8);
- doc.text('Account: '+String(ptCurrentUser||'User').slice(0,44)+'     Generated: '+new Date().toLocaleDateString('en-GB')+
+ doc.text('Account: '+ptAnaPdfSafe(String(ptCurrentUser||'User')).slice(0,44)+'     Generated: '+new Date().toLocaleDateString('en-GB')+
   (ptAnaDemo?'     SAMPLE DATA':''),14,47);
  doc.setDrawColor(220,230,219);doc.line(14,52,196,52);
 }
 function ptAnaPdfStat(doc,x,y,label,value,width){
  doc.setFillColor(245,249,246);doc.setDrawColor(220,232,221);doc.roundedRect(x,y,width,28,3,3,'FD');
  doc.setTextColor(92,116,98);doc.setFont('helvetica','normal');doc.setFontSize(8);
- doc.text(String(label),x+7,y+9);
+ doc.text(ptAnaPdfSafe(label),x+7,y+9);
  doc.setTextColor(38,58,44);doc.setFont('helvetica','bold');doc.setFontSize(16);
- doc.text(String(value),x+7,y+22);
+ doc.text(ptAnaPdfSafe(value),x+7,y+22);
 }
 function ptAnaPdfFooter(doc,page){
  doc.setDrawColor(222,232,224);doc.line(14,280,196,280);
@@ -2983,10 +2983,15 @@ function ptAnaPdfVectorBars(doc,x,y,w,h,title,rows,colors,unit){
   const yy=y+17+i*rowHeight,barY=yy+5;
   const c=colors[i%colors.length];
   doc.setTextColor(52,77,57);doc.setFont('helvetica','normal');doc.setFontSize(8.2);
-  doc.text(ptAnaPdfSafe(name).slice(0,29),x+7,yy);
   const shown=unit==='hours'?ptAnaHours(value):String(value)+' nights';
+  const display=ptAnaPdfSafe(shown);
+  const maxWidth=Math.max(15,w-26-(doc.getTextWidth?doc.getTextWidth(display):display.length*1.5));
+  let shortName=ptAnaPdfSafe(name);
+  while(shortName.length>3&&doc.getTextWidth&&doc.getTextWidth(shortName)>maxWidth)shortName=shortName.slice(0,-2);
+  if(shortName!==ptAnaPdfSafe(name))shortName=shortName.slice(0,-1)+'...';
+  doc.text(shortName,x+7,yy);
   doc.setFont('helvetica','bold');
-  doc.text(ptAnaPdfSafe(shown),x+w-8,yy,{align:'right'});
+  doc.text(display,x+w-8,yy,{align:'right'});
   doc.setFillColor(228,236,230);doc.roundedRect(x+7,barY,w-14,2.8,1.2,1.2,'F');
   const track=(w-14)*Math.min(1,Math.max(0,value/max));
   if(track>.1){ptAnaPdfRgb(doc,c,'fill');doc.roundedRect(x+7,barY,track,2.8,1.2,1.2,'F');}
@@ -3095,7 +3100,7 @@ function ptAnaPdfAnnual(doc,stats,year){
   if(item.month%2===1){doc.setFillColor(248,250,248);doc.rect(14,y-7,182,11,'F');}
   doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(45,68,51);
   doc.text(monthNames[item.month].slice(0,12),18,y);
-  doc.text(item.hasEntries?ptAnaPct(item.habitPct):'N/A',71,y);
+  doc.text(item.habitPct==null?'N/A':ptAnaPct(item.habitPct),71,y);
   doc.text(item.study.length?ptAnaHours(item.studyTotal):'N/A',111,y);
   doc.text(item.sleep.length?ptAnaHours(item.sleepAvg):'N/A',164,y);
   y+=14;
