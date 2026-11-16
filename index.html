@@ -2663,9 +2663,9 @@ function ptAnaMakeChart(id,type,labels,datasets,options){
    layout:{padding:{top:8,bottom:3}},
    plugins:{legend:{display:isPie||datasets.length>1,position:'bottom',
     labels:{color:labelColor,boxWidth:10,boxHeight:10,padding:14,font:{size:10}}},
-    tooltip:{callbacks:{label:function(item){
+    tooltip:{enabled:!options.empty,callbacks:{label:function(item){
      const val=isPie?item.parsed:item.parsed.y;
-     return ' '+item.dataset.label+(isPie?'':':')+' '+(options.format==='pct'?Math.round(val)+'%':options.format==='hour'?ptAnaHours(val):type==='doughnut'?item.label+': '+(options.pieUnit==='hours'?ptAnaHours(val):val+' nights'):val);
+     return isPie?' '+item.label+': '+(options.pieUnit==='hours'?ptAnaHours(val):val+' nights'):' '+item.dataset.label+': '+(options.format==='pct'?Math.round(val)+'%':options.format==='hour'?ptAnaHours(val):val);
     }}}},scales:scales,cutout:isPie?'68%':undefined}
  });
 }
@@ -2698,13 +2698,13 @@ function ptAnaMonthlyCanvas(source,selected,yearStats){
  const subjData=bySubject.length?bySubject.map(x=>Number(x[1].toFixed(2))):[1];
  ptAnaMakeChart('anaSubjects','doughnut',subjLabels,[{label:'Study time',data:subjData,
   backgroundColor:bySubject.length?['#628dc8','#6eaa8b','#cfa866','#9b80bb','#77a7a9','#d88d80']:['#dce4dd'],
-  borderColor:cssVar('--surface'),borderWidth:2}],{format:'hour',pieUnit:'hours'});
+  borderColor:cssVar('--surface'),borderWidth:2}],{format:'hour',pieUnit:'hours',empty:bySubject.length===0});
  const sleepCount=selected.sleepBands.reduce((a,b)=>a+b,0);
- ptAnaMakeChart('anaSleepBands','doughnut',['Below minimum','Within range','Excellent+'],[{
+ ptAnaMakeChart('anaSleepBands','doughnut',sleepCount?['Below minimum','Within range','Excellent+']:['No sleep data'],[{
   label:'Nights',data:sleepCount?selected.sleepBands:[1,0,0],
   backgroundColor:sleepCount?[PT_ANA_COLORS.red,PT_ANA_COLORS.gold,PT_ANA_COLORS.habit]:['#dce4dd','#dce4dd','#dce4dd'],
   borderColor:cssVar('--surface'),borderWidth:2
- }],{pieUnit:'nights'});
+ }],{pieUnit:'nights',empty:sleepCount===0});
 }
 function renderAnalytics(){
  const yearInput=$('anaYear'),monthInput=$('anaMonth');
