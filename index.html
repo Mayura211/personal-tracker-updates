@@ -675,6 +675,32 @@ nav{flex-wrap:wrap}
 @media(max-width:1030px){.ana-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:690px){.ana-hero{padding:22px}.ana-hero h2{font-size:27px}.ana-hero-mark{display:none}.ana-chart-grid,.ana-bottom-grid{grid-template-columns:1fr}.ana-panel-wide{grid-column:auto}.ana-kpis{gap:8px}.ana-kpi{padding:14px}.ana-kpi strong{font-size:21px}}
 
+/* Analytics Studio: responsive filtering and precise data table. */
+.ana-filter-bar{background:var(--surface);border:1px solid var(--line);border-radius:15px;padding:16px 18px;margin-bottom:14px;box-shadow:0 4px 20px #00000004}
+.ana-filter-heading{display:flex;align-items:center;gap:9px;margin-bottom:14px}
+.ana-filter-icon{display:grid;place-items:center;background:var(--sage);color:var(--green);border-radius:9px;width:30px;height:30px;font-size:20px}
+.ana-filter-heading strong,.ana-filter-heading small{display:block}.ana-filter-heading strong{font-size:13px;color:var(--dark)}.ana-filter-heading small{font-size:10px;color:var(--c-text);margin-top:3px}
+.ana-filter-grid{display:grid;grid-template-columns:repeat(5,minmax(105px,1fr));gap:10px}
+.ana-filter-grid label{display:flex;flex-direction:column;gap:5px;font-size:10px;font-weight:800;color:var(--c-text)}
+.ana-filter-grid select{min-width:0;width:100%;padding:9px 8px;font-size:11px;font-weight:700}
+.ana-active-filters{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:12px;padding-top:10px;border-top:1px solid var(--line)}
+.ana-active-filters span{font-size:10px;color:var(--c-text);line-height:1.5}.ana-active-filters button{font-size:10px;padding:6px 10px}
+.ana-panel{transition:box-shadow .2s,border-color .2s}.ana-panel:hover{box-shadow:0 8px 26px #1e3c2920;border-color:var(--ctl)}
+.ana-panel[data-ana-hidden="true"]{display:none}
+.ana-data-explorer{margin-top:15px}
+.ana-table-wrap{width:100%;overflow-x:auto}
+.ana-monthly-table{width:100%;border-collapse:collapse;font-size:11px;white-space:nowrap}
+.ana-monthly-table th{text-align:right;font-weight:800;font-size:10px;letter-spacing:.03em;color:var(--c-text);padding:12px 9px;background:var(--s2);border-bottom:1px solid var(--line)}
+.ana-monthly-table th:first-child,.ana-monthly-table td:first-child{text-align:left}
+.ana-monthly-table td{text-align:right;padding:11px 9px;border-bottom:1px solid var(--line);color:var(--dark);font-variant-numeric:tabular-nums}
+.ana-monthly-table tr:last-child td{border-bottom:0}.ana-monthly-table tr:hover td{background:var(--sel)}
+.ana-monthly-table td:first-child{font-weight:800}.ana-monthly-table .ana-table-focus td{background:var(--sage);font-weight:800}
+.ana-data-explorer button{padding:8px 11px;font-size:11px;color:var(--green)}
+.ana-panel .ana-canvas{height:270px}.ana-panel-wide .ana-canvas{height:290px}.ana-kpi strong{font-size:26px}
+.ana-panel-head h4{font-size:14px}.ana-panel-head p{font-size:11px}
+@media(max-width:1100px){.ana-filter-grid{grid-template-columns:repeat(3,minmax(130px,1fr))}}
+@media(max-width:690px){.ana-filter-grid{grid-template-columns:repeat(2,minmax(120px,1fr))}.ana-hero h2{font-size:25px}.ana-hero{padding:24px 19px}.ana-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
 </style>
 </head>
 <body>
@@ -984,8 +1010,8 @@ nav{flex-wrap:wrap}
  <div class="ana-hero">
   <div>
    <div class="ana-eyebrow"><span class="ana-glow"></span> PERSONAL TRACKER / ANALYTICS BETA</div>
-   <h2>Know your progress.</h2>
-   <p>A clearer picture of your habits, focus and rest — all calculated from your records on this device.</p>
+   <h2>Understand every pattern.</h2>
+   <p>Powerful filters, detailed comparisons and professional reports for every month of your progress.</p>
   </div>
   <div class="ana-hero-mark" aria-hidden="true">↗</div>
  </div>
@@ -1000,6 +1026,17 @@ nav{flex-wrap:wrap}
    <button type="button" class="ana-export-button" onclick="ptAnaExport('year')">↓ Annual PDF</button>
   </div>
  </div>
+ <div class="ana-filter-bar" aria-label="Analytics filters">
+   <div class="ana-filter-heading"><span class="ana-filter-icon">◈</span><div><strong>Explore your data</strong><small>All filters update the charts instantly</small></div></div>
+   <div class="ana-filter-grid">
+     <label>Focus<select id="anaFocus" onchange="ptAnaFiltersChanged()"><option value="all">All analytics</option><option value="habit">Habits only</option><option value="study">Study only</option><option value="sleep">Sleep only</option></select></label>
+     <label>Historical range<select id="anaRange" onchange="ptAnaFiltersChanged()"><option value="3">Last 3 months</option><option value="6">Last 6 months</option><option value="12" selected>Last 12 months</option></select></label>
+     <label>Chart style<select id="anaStyle" onchange="ptAnaFiltersChanged()"><option value="bar">Column</option><option value="line" selected>Line</option><option value="area">Area</option></select></label>
+     <label>Study subject<select id="anaSubject" onchange="ptAnaFiltersChanged()"><option value="all">All subjects</option></select></label>
+     <label>Sleep duration<select id="anaSleepFilter" onchange="ptAnaFiltersChanged()"><option value="all">All sleep records</option><option value="low">Below minimum</option><option value="normal">Within range</option><option value="high">Excellent+</option></select></label>
+   </div>
+   <div class="ana-active-filters"><span id="anaAppliedFilters">All records · Last 12 months · Line charts</span><button type="button" onclick="ptAnaResetFilters()">Reset filters</button></div>
+ </div>
  <div id="anaDataNotice" class="ana-data-notice" role="status"></div>
  <div class="ana-kpis" id="anaKpis">
   <div class="ana-kpi"><small>Habit completion</small><strong>—</strong></div>
@@ -1007,24 +1044,29 @@ nav{flex-wrap:wrap}
   <div class="ana-kpi"><small>Avg. sleep</small><strong>—</strong></div>
   <div class="ana-kpi"><small>Days with activity</small><strong>—</strong></div>
  </div>
- <div class="ana-section-head"><div><small>01 / YEAR AT A GLANCE</small><h3>Month-by-month performance</h3></div><p>Compare every month in the selected year.</p></div>
+ <div class="ana-section-head"><div><small>01 / PERFORMANCE HISTORY</small><h3>Month-by-month performance</h3></div><p id="anaRangeDescription">Last 12 months through the selected period</p></div>
  <div class="ana-chart-grid">
-  <article class="ana-panel"><div class="ana-panel-head"><div><h4>Habit Consistency</h4><p>Completed / scheduled checks · percent</p></div><span class="ana-pill">HABITS</span></div><div class="ana-canvas"><canvas id="anaHabitYear"></canvas></div></article>
-  <article class="ana-panel"><div class="ana-panel-head"><div><h4>Study Investment</h4><p>Total recorded study time · hours</p></div><span class="ana-pill ana-pill-blue">STUDY</span></div><div class="ana-canvas"><canvas id="anaStudyYear"></canvas></div></article>
-  <article class="ana-panel ana-panel-wide"><div class="ana-panel-head"><div><h4>Sleep Rhythm</h4><p>Average duration per recorded night · hours</p></div><span class="ana-pill ana-pill-purple">SLEEP</span></div><div class="ana-canvas"><canvas id="anaSleepYear"></canvas></div></article>
+  <article class="ana-panel" data-ana-categories="habit"><div class="ana-panel-head"><div><h4>Habit Consistency</h4><p>Completed / scheduled checks · percent</p></div><span class="ana-pill">HABITS</span></div><div class="ana-canvas"><canvas id="anaHabitYear"></canvas></div></article>
+  <article class="ana-panel" data-ana-categories="study"><div class="ana-panel-head"><div><h4>Study Investment</h4><p>Total recorded study time · hours</p></div><span class="ana-pill ana-pill-blue">STUDY</span></div><div class="ana-canvas"><canvas id="anaStudyYear"></canvas></div></article>
+  <article class="ana-panel ana-panel-wide" data-ana-categories="sleep"><div class="ana-panel-head"><div><h4>Sleep Rhythm</h4><p>Average duration per recorded night · hours</p></div><span class="ana-pill ana-pill-purple">SLEEP</span></div><div class="ana-canvas"><canvas id="anaSleepYear"></canvas></div></article>
  </div>
  <div class="ana-section-head"><div><small>02 / SELECTED MONTH</small><h3>Inside your daily progress</h3></div><p id="anaMonthSubtitle">Daily activity detail</p></div>
  <div class="ana-chart-grid">
-  <article class="ana-panel"><div class="ana-panel-head"><div><h4>Daily Habit Completion</h4><p>Daily completion rate · percent</p></div></div><div class="ana-canvas"><canvas id="anaHabitDaily"></canvas></div></article>
-  <article class="ana-panel"><div class="ana-panel-head"><div><h4>Study &amp; Sleep Duration</h4><p>Study hours and sleep hours per date</p></div></div><div class="ana-canvas"><canvas id="anaDailyHours"></canvas></div></article>
-  <article class="ana-panel ana-breakdown"><div class="ana-panel-head"><div><h4>Study by Subject</h4><p>Share of study time</p></div></div><div class="ana-canvas ana-canvas-pie"><canvas id="anaSubjects"></canvas></div></article>
-  <article class="ana-panel ana-breakdown"><div class="ana-panel-head"><div><h4>Sleep Quality Distribution</h4><p>Using your current sleep reference thresholds</p></div></div><div class="ana-canvas ana-canvas-pie"><canvas id="anaSleepBands"></canvas></div></article>
+  <article class="ana-panel" data-ana-categories="habit"><div class="ana-panel-head"><div><h4>Daily Habit Completion</h4><p>Daily completion rate · percent</p></div></div><div class="ana-canvas"><canvas id="anaHabitDaily"></canvas></div></article>
+  <article class="ana-panel" data-ana-categories="study sleep"><div class="ana-panel-head"><div><h4>Study &amp; Sleep Duration</h4><p>Study hours and sleep hours per date</p></div></div><div class="ana-canvas"><canvas id="anaDailyHours"></canvas></div></article>
+  <article class="ana-panel ana-breakdown" data-ana-categories="study"><div class="ana-panel-head"><div><h4>Study by Subject</h4><p>Share of study time</p></div></div><div class="ana-canvas ana-canvas-pie"><canvas id="anaSubjects"></canvas></div></article>
+  <article class="ana-panel ana-breakdown" data-ana-categories="sleep"><div class="ana-panel-head"><div><h4>Sleep Quality Distribution</h4><p>Using your current sleep reference thresholds</p></div></div><div class="ana-canvas ana-canvas-pie"><canvas id="anaSleepBands"></canvas></div></article>
  </div>
  <div class="ana-bottom-grid">
-  <article class="ana-panel"><div class="ana-panel-head"><div><h4>Habit Breakdown</h4><p>Completed versus scheduled checkmarks</p></div></div><div class="ana-habit-list" id="anaHabitBreakdown"></div></article>
+  <article class="ana-panel" data-ana-categories="habit"><div class="ana-panel-head"><div><h4>Habit Breakdown</h4><p>Completed versus scheduled checkmarks</p></div></div><div class="ana-habit-list" id="anaHabitBreakdown"></div></article>
   <article class="ana-panel"><div class="ana-panel-head"><div><h4>Monthly Insights</h4><p>Explainable observations, not AI-generated claims</p></div></div><div class="ana-insights" id="anaInsights"></div></article>
  </div>
- <div class="ana-footer-note">Your personal tracking records stay in the local application. Demo mode is temporary; it never replaces or saves your data.</div>
+
+ <article class="ana-panel ana-data-explorer">
+  <div class="ana-panel-head"><div><h4>Monthly Data Explorer</h4><p>Exact monthly values behind the charts · selected historical range</p></div><button type="button" onclick="ptAnaExportCSV()">↓ Export CSV</button></div>
+  <div class="ana-table-wrap"><table class="ana-monthly-table"><thead><tr><th>Month</th><th>Habit %</th><th>Study Hours</th><th>Avg. Sleep</th><th>Study Sessions</th><th>Sleep Nights</th></tr></thead><tbody id="anaMonthlyRows"></tbody></table></div>
+ </article>
+ <div class="ana-footer-note">Private and local-first. Report charts use sharp vector graphics instead of blurry screenshots. Demo mode never writes to your records.</div>
 </section>
 
 <div class="toast-box" id="toasts"></div>
