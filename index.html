@@ -619,6 +619,62 @@ nav{flex-wrap:wrap}
 .pt-clock-caption{font-size:11px;font-weight:800;letter-spacing:.12em;color:var(--c-text)}
 #pt-live-clock{font:700 21px/1.2 ui-monospace,SFMono-Regular,Consolas,monospace;font-variant-numeric:tabular-nums;letter-spacing:.08em;color:var(--dark)}
 
+/* Analytics dashboard — isolated styles that inherit the application's light/dark variables. */
+.ana-nav-dot{font-size:8px;letter-spacing:.08em;vertical-align:middle;padding:2px 5px;border-radius:5px;background:var(--sage);color:var(--green);margin-left:3px}
+.ana-hero{display:flex;justify-content:space-between;align-items:center;gap:18px;padding:28px 30px;margin:5px 0 19px;overflow:hidden;position:relative;border-radius:18px;background:linear-gradient(125deg,#233e31,#3c6550 62%,#678e6b);color:#fff}
+.ana-hero:after{content:"";position:absolute;right:-40px;top:-80px;width:260px;height:260px;border:1px solid #ffffff38;border-radius:50%;box-shadow:0 0 0 46px #ffffff09,0 0 0 95px #ffffff06}
+.ana-hero>div{position:relative;z-index:1}
+.ana-eyebrow{font-size:10px;letter-spacing:.18em;font-weight:800;color:#d3e9d5;display:flex;gap:8px;align-items:center}
+.ana-glow{height:7px;width:7px;background:#b1eab4;border-radius:50%;box-shadow:0 0 14px #b1eab4}
+.ana-hero h2{font-family:"Playfair Display",Georgia,serif;font-size:33px;line-height:1.15;margin:12px 0 9px;color:#fff;font-weight:700}
+.ana-hero p{font-size:12px;line-height:1.65;color:#dce8dc;max-width:490px;margin:0}
+.ana-hero-mark{font-family:Georgia,serif;font-size:100px;opacity:.32;margin:0 18px}
+.ana-toolbar{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:14px 16px;border-radius:13px;background:var(--surface);border:1px solid var(--line);margin-bottom:12px}
+.ana-period,.ana-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.ana-period label{font-size:11px;color:var(--c-text);font-weight:800}
+.ana-period select{padding:8px 11px;min-width:90px}
+.ana-actions button{font-size:11px;padding:9px 12px}
+.ana-export-button{background:var(--green)!important;color:#fff!important;border-color:var(--green)!important}
+.ana-data-notice{font-size:12px;margin-bottom:15px;color:var(--c-text);line-height:1.6}
+.ana-data-notice[data-demo="true"]{color:var(--green);font-weight:700}
+.ana-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.ana-kpi{min-width:0;position:relative;overflow:hidden;border-radius:15px;padding:16px 17px 18px;background:var(--surface);border:1px solid var(--line);box-shadow:0 4px 16px #00000006}
+.ana-kpi:before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--akpi,#6e9878)}
+.ana-kpi:nth-child(2){--akpi:#608ac7}.ana-kpi:nth-child(3){--akpi:#9475ad}.ana-kpi:nth-child(4){--akpi:#c69d57}
+.ana-kpi small{display:block;font-size:11px;font-weight:700;color:var(--c-text)}
+.ana-kpi strong{display:block;color:var(--dark);font-size:25px;font-weight:800;letter-spacing:-.03em;margin:12px 0 3px;white-space:nowrap}
+.ana-kpi .ana-kpi-sub{display:block;color:var(--c-text);font-size:10px;line-height:1.5}
+.ana-section-head{display:flex;align-items:end;justify-content:space-between;flex-wrap:wrap;gap:10px;margin:30px 0 13px}
+.ana-section-head small{font-size:10px;color:var(--green);font-weight:800;letter-spacing:.14em}
+.ana-section-head h3{font-family:"Playfair Display",Georgia,serif;color:var(--dark);font-size:22px;margin:5px 0 0}
+.ana-section-head>p{color:var(--c-text);font-size:11px;margin:0 0 4px}
+.ana-chart-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}
+.ana-panel{background:var(--surface);border:1px solid var(--line);border-radius:15px;padding:18px;min-width:0;box-shadow:0 5px 20px #00000007}
+.ana-panel-wide{grid-column:1/-1}
+.ana-panel-head{display:flex;justify-content:space-between;align-items:start;gap:8px;margin-bottom:14px}
+.ana-panel h4{font-size:14px;font-weight:800;color:var(--dark);margin:0 0 5px}
+.ana-panel-head p{color:var(--c-text);font-size:10px;margin:0;line-height:1.5}
+.ana-pill{border:1px solid #689c7a50;border-radius:99px;padding:4px 7px;color:#568566;background:#609c6922;font-size:8px;font-weight:800;letter-spacing:.09em;white-space:nowrap}
+.ana-pill-blue{color:#648ac4;background:#648ac418;border-color:#648ac445}
+.ana-pill-purple{color:#9475ad;background:#9475ad16;border-color:#9475ad42}
+.ana-canvas{height:245px;position:relative;min-width:0}
+.ana-canvas canvas{height:100%!important;width:100%!important}
+.ana-canvas-pie{height:236px}
+.ana-bottom-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px;margin-top:13px}
+.ana-habit-list{display:flex;flex-direction:column;gap:14px;max-height:360px;overflow:auto}
+.ana-habit-name{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:11px;color:var(--dark);font-weight:700;margin-bottom:6px}
+.ana-habit-name span:last-child{font-variant-numeric:tabular-nums;color:var(--c-text);white-space:nowrap}
+.ana-meter{height:7px;border-radius:99px;background:var(--sage);overflow:hidden}
+.ana-meter>span{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,#668a75,#94b49d)}
+.ana-insights{display:flex;flex-direction:column;gap:10px}
+.ana-insight{display:flex;gap:10px;align-items:start;padding:11px 12px;background:var(--s2);border:1px solid var(--line);border-radius:10px}
+.ana-insight-mark{flex:0 0 24px;height:24px;display:grid;place-items:center;border-radius:8px;background:var(--sage);color:var(--green);font-weight:800;font-size:12px}
+.ana-insight p{font-size:11px;line-height:1.55;margin:3px 0 0;color:var(--dark)}
+.ana-empty{font-size:12px;color:var(--c-text);line-height:1.6;padding:10px 0}
+.ana-footer-note{color:var(--c-text);font-size:10px;line-height:1.65;margin:20px 0 8px}
+@media(max-width:1030px){.ana-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:690px){.ana-hero{padding:22px}.ana-hero h2{font-size:27px}.ana-hero-mark{display:none}.ana-chart-grid,.ana-bottom-grid{grid-template-columns:1fr}.ana-panel-wide{grid-column:auto}.ana-kpis{gap:8px}.ana-kpi{padding:14px}.ana-kpi strong{font-size:21px}}
+
 </style>
 </head>
 <body>
@@ -672,6 +728,7 @@ nav{flex-wrap:wrap}
  <a href="#study" data-page="study">Study Tracker</a>
  <a href="#sleep" data-page="sleep">Sleep Tracker</a>
  <a href="#achievements" data-page="achievements">Achievements</a>
+ <a href="#analytics" data-page="analytics">Analytics <span class="ana-nav-dot">NEW</span></a>
 </nav>
 
 <!-- HABIT TRACKER -->
@@ -921,6 +978,55 @@ nav{flex-wrap:wrap}
   <p style="font-size:12px;color:var(--muted);line-height:1.7;margin:0"><b>Legendary Tiers (Tier 1–4):</b> Track consecutive qualifying calendar months where 100% of active habits are completed on every scheduled day. <b>Habit Mastery (Tier 5):</b> Tracks the maximum number of active habits maintained at 100% completion on every scheduled day throughout 1 consecutive calendar month. Future-dated records are ignored, and unlocked achievements are saved permanently.</p>
  </div>
 </section>
+
+<!-- PERSONAL ANALYTICS: PRE-RELEASE -->
+<section id="analytics" class="page">
+ <div class="ana-hero">
+  <div>
+   <div class="ana-eyebrow"><span class="ana-glow"></span> PERSONAL TRACKER / ANALYTICS BETA</div>
+   <h2>Know your progress.</h2>
+   <p>A clearer picture of your habits, focus and rest — all calculated from your records on this device.</p>
+  </div>
+  <div class="ana-hero-mark" aria-hidden="true">↗</div>
+ </div>
+ <div class="ana-toolbar">
+  <div class="ana-period">
+   <label for="anaMonth">Month</label><select id="anaMonth" onchange="renderAnalytics()"></select>
+   <label for="anaYear">Year</label><select id="anaYear" onchange="renderAnalytics()"></select>
+  </div>
+  <div class="ana-actions">
+   <button type="button" id="anaDemoButton" onclick="ptAnaToggleDemo()">Try Demo Data</button>
+   <button type="button" class="ana-export-button" onclick="ptAnaExport('month')">↓ Monthly PDF</button>
+   <button type="button" class="ana-export-button" onclick="ptAnaExport('year')">↓ Annual PDF</button>
+  </div>
+ </div>
+ <div id="anaDataNotice" class="ana-data-notice" role="status"></div>
+ <div class="ana-kpis" id="anaKpis">
+  <div class="ana-kpi"><small>Habit completion</small><strong>—</strong></div>
+  <div class="ana-kpi"><small>Study total</small><strong>—</strong></div>
+  <div class="ana-kpi"><small>Avg. sleep</small><strong>—</strong></div>
+  <div class="ana-kpi"><small>Days with activity</small><strong>—</strong></div>
+ </div>
+ <div class="ana-section-head"><div><small>01 / YEAR AT A GLANCE</small><h3>Month-by-month performance</h3></div><p>Compare every month in the selected year.</p></div>
+ <div class="ana-chart-grid">
+  <article class="ana-panel"><div class="ana-panel-head"><div><h4>Habit Consistency</h4><p>Completed / scheduled checks · percent</p></div><span class="ana-pill">HABITS</span></div><div class="ana-canvas"><canvas id="anaHabitYear"></canvas></div></article>
+  <article class="ana-panel"><div class="ana-panel-head"><div><h4>Study Investment</h4><p>Total recorded study time · hours</p></div><span class="ana-pill ana-pill-blue">STUDY</span></div><div class="ana-canvas"><canvas id="anaStudyYear"></canvas></div></article>
+  <article class="ana-panel ana-panel-wide"><div class="ana-panel-head"><div><h4>Sleep Rhythm</h4><p>Average duration per recorded night · hours</p></div><span class="ana-pill ana-pill-purple">SLEEP</span></div><div class="ana-canvas"><canvas id="anaSleepYear"></canvas></div></article>
+ </div>
+ <div class="ana-section-head"><div><small>02 / SELECTED MONTH</small><h3>Inside your daily progress</h3></div><p id="anaMonthSubtitle">Daily activity detail</p></div>
+ <div class="ana-chart-grid">
+  <article class="ana-panel"><div class="ana-panel-head"><div><h4>Daily Habit Completion</h4><p>Daily completion rate · percent</p></div></div><div class="ana-canvas"><canvas id="anaHabitDaily"></canvas></div></article>
+  <article class="ana-panel"><div class="ana-panel-head"><div><h4>Study &amp; Sleep Duration</h4><p>Study hours and sleep hours per date</p></div></div><div class="ana-canvas"><canvas id="anaDailyHours"></canvas></div></article>
+  <article class="ana-panel ana-breakdown"><div class="ana-panel-head"><div><h4>Study by Subject</h4><p>Share of study time</p></div></div><div class="ana-canvas ana-canvas-pie"><canvas id="anaSubjects"></canvas></div></article>
+  <article class="ana-panel ana-breakdown"><div class="ana-panel-head"><div><h4>Sleep Quality Distribution</h4><p>Using your current sleep reference thresholds</p></div></div><div class="ana-canvas ana-canvas-pie"><canvas id="anaSleepBands"></canvas></div></article>
+ </div>
+ <div class="ana-bottom-grid">
+  <article class="ana-panel"><div class="ana-panel-head"><div><h4>Habit Breakdown</h4><p>Completed versus scheduled checkmarks</p></div></div><div class="ana-habit-list" id="anaHabitBreakdown"></div></article>
+  <article class="ana-panel"><div class="ana-panel-head"><div><h4>Monthly Insights</h4><p>Explainable observations, not AI-generated claims</p></div></div><div class="ana-insights" id="anaInsights"></div></article>
+ </div>
+ <div class="ana-footer-note">Your personal tracking records stay in the local application. Demo mode is temporary; it never replaces or saves your data.</div>
+</section>
+
 <div class="toast-box" id="toasts"></div>
 
 </div>
@@ -1056,10 +1162,11 @@ function nav(){
    if(a.dataset.page==='study')renderStudy();
    if(a.dataset.page==='sleep')renderSleep();
    if(a.dataset.page==='achievements')renderAchievements();
+   if(a.dataset.page==='analytics')renderAnalytics();
   };
  });
  const target=location.hash.slice(1);
- if(['study','sleep','habits','achievements'].includes(target)){
+ if(['study','sleep','habits','achievements','analytics'].includes(target)){
   document.querySelector(`nav a[data-page="${target}"]`).click();
  }
 }
@@ -2211,7 +2318,7 @@ async function loginUser(){
 function ptEnterApp(){
  sessionStorage.setItem('pt_active_user',ptCurrentUser);
  $('authGate').style.display='none';$('trackerApp').hidden=false;$('signedInAs').textContent='@'+ptCurrentUser;
- setupSelectors();ptLoadChartPrefs();setupAch();themeBtn();nav();renderHabits();renderStudy();renderSleep();evaluateAchievements();
+ setupSelectors();ptLoadChartPrefs();ptAnaInit();setupAch();themeBtn();nav();renderHabits();renderStudy();renderSleep();evaluateAchievements();
 }
 function logoutUser(){ptPersist();$('toasts').replaceChildren();sessionStorage.removeItem('pt_active_user');ptCurrentUser=null;$('trackerApp').hidden=true;$('authGate').style.display='grid';$('loginPass').value='';showLogin();ptErr('')}
 saveAll=function(){ptPersist();if(ptCurrentUser)evaluateAchievements()};
@@ -2382,6 +2489,155 @@ function exportHistoryPDF(type){
  });
  savePdf(doc,type+'-history-'+mode+'-'+today()+'.pdf');
 }
+
+/* PERSONAL ANALYTICS — read-only and account-aware. No tracking records are modified. */
+const PT_ANA_COLORS={habit:'#628c72',habitSoft:'rgba(98,140,114,.23)',study:'#628dc8',studySoft:'rgba(98,141,200,.18)',sleep:'#9b80bb',sleepSoft:'rgba(155,128,187,.2)',gold:'#c89b53',red:'#d47870',muted:'#cbd4cb'};
+let ptAnaDemo=false,ptAnaDemoSnapshot=null;
+const ptAnaCharts={};
+function ptAnaKey(y,m){return String(y)+'-'+pad2(m+1);}
+function ptAnaMonthHabits(src,y,m){
+ const key=ptAnaKey(y,m);
+ if(Object.prototype.hasOwnProperty.call(src.habitsMap,key))return src.habitsMap[key]||[];
+ const prev=Object.keys(src.habitsMap).filter(k=>k<key).sort().pop();
+ return prev?(src.habitsMap[prev]||[]):[];
+}
+function ptAnaHasCheck(src,y,m,id,d){
+ const k=ptAnaKey(y,m)+'-'+String(id)+'-'+pad2(d);
+ const legacy=String(y)+'-'+String(m+1)+'-'+String(id)+'-'+String(d);
+ return !!(src.checks[k]||src.checks[legacy]);
+}
+function ptAnaMonth(src,y,m){
+ const key=ptAnaKey(y,m),days=monthDays(y,m),current=today(),present=current.slice(0,7);
+ const limit=key>present?0:key===present?Math.min(days,+current.slice(-2)):days;
+ const habits=ptAnaMonthHabits(src,y,m);
+ const ms=src.studies.filter(x=>x.date&&x.date.slice(0,7)===key&&Number.isFinite(x.hours)&&x.hours>0);
+ const ns=src.sleeps.filter(x=>x.date&&x.date.slice(0,7)===key&&Number.isFinite(x.hours)&&x.hours>0);
+ const studyDaily=Array(days).fill(0),sleepDaily=Array(days).fill(null);
+ const sleepCounts=Array(days).fill(0),habitDaily=Array(days).fill(null);
+ const subjectMap=new Map(),habitItems=[],dayHasWork=new Set();
+ ms.forEach(x=>{
+  const d=+x.date.slice(-2);
+  if(d>=1&&d<=days){studyDaily[d-1]+=x.hours;dayHasWork.add(d);}
+  const subject=String(x.subject||'General Study').trim().slice(0,80)||'General Study';
+  subjectMap.set(subject,(subjectMap.get(subject)||0)+x.hours);
+ });
+ ns.forEach(x=>{
+  const d=+x.date.slice(-2);
+  if(d>=1&&d<=days){sleepDaily[d-1]=(sleepDaily[d-1]||0)+x.hours;sleepCounts[d-1]++;dayHasWork.add(d);}
+ });
+ sleepDaily.forEach((hours,i)=>{if(hours!==null)sleepDaily[i]=hours/sleepCounts[i]});
+ let planned=0,done=0,bestStreak=0,run=0,perfectDays=0;
+ for(let d=1;d<=days;d++){
+  if(d>limit){habitDaily[d-1]=null;continue;}
+  let dailyPlanned=0,dailyDone=0;
+  for(const h of habits){
+   if(!scheduled(h,y,m,d))continue;
+   planned++;dailyPlanned++;
+   if(ptAnaHasCheck(src,y,m,h.id,d)){done++;dailyDone++;dayHasWork.add(d);}
+  }
+  if(dailyPlanned>0){habitDaily[d-1]=Math.round(100*dailyDone/dailyPlanned);}
+  if(dailyPlanned>0&&dailyPlanned===dailyDone){run++;perfectDays++;bestStreak=Math.max(bestStreak,run)}
+  else run=0;
+ }
+ for(const h of habits){
+  let p=0,completed=0;
+  for(let d=1;d<=limit;d++)if(scheduled(h,y,m,d)){p++;if(ptAnaHasCheck(src,y,m,h.id,d))completed++;}
+  habitItems.push({name:String(h.name||'Unnamed Habit'),done:completed,planned:p,pct:p?Math.round(completed*100/p):null});
+ }
+ const studyTotal=ms.reduce((n,x)=>n+x.hours,0);
+ const sleepTotal=ns.reduce((n,x)=>n+x.hours,0);
+ const sleepLow=(typeof ptChartPrefs!=='undefined'&&ptChartPrefs)?ptChartPrefs.sleepLow:6;
+ const sleepHigh=(typeof ptChartPrefs!=='undefined'&&ptChartPrefs)?ptChartPrefs.sleepHigh:8;
+ const sleepBands=[
+  ns.filter(x=>x.hours<sleepLow).length,
+  ns.filter(x=>x.hours>=sleepLow&&x.hours<sleepHigh).length,
+  ns.filter(x=>x.hours>=sleepHigh).length
+ ];
+ return {year:y,month:m,key,days,limit,habits,habitItems,planned,done,habitPct:planned?Math.round(done/planned*100):null,
+  habitDaily,bestStreak,perfectDays,study:ms,studyTotal,studyDaily,subjects:[...subjectMap.entries()].sort((a,b)=>b[1]-a[1]),
+  sleep:ns,sleepTotal,sleepAvg:ns.length?sleepTotal/ns.length:null,sleepDaily,sleepBands,sleepLow,sleepHigh,
+  activityDays:[...dayHasWork].filter(d=>d<=limit).length,
+  hasEntries:done>0||ms.length>0||ns.length>0};
+}
+function ptAnaDemoSource(){
+ const present=new Date(),y=present.getFullYear(),m=present.getMonth();
+ const mock={habitsMap:{},checks:{},studies:[],sleeps:[]};
+ const names=['Read 20 Minutes','Exercise','Journal','Study Planning','Meditation'];
+ const dates=[];
+ for(let n=5;n>=0;n--){const d=new Date(y,m-n,1);dates.push([d.getFullYear(),d.getMonth()]);}
+ for(const [yr,mo] of dates){
+  const key=ptAnaKey(yr,mo);
+  mock.habitsMap[key]=names.map((name,i)=>({id:String(i+1),name,weekdays:[0,1,2,3,4,5,6]}));
+  const length=(yr===y&&mo===m)?present.getDate():monthDays(yr,mo);
+  for(let d=1;d<=length;d++){
+   for(let i=0;i<names.length;i++)
+    if(((d*5+i*3+mo*2)%17)<(9+Math.floor(mo%4)))mock.checks[key+'-'+String(i+1)+'-'+pad2(d)]=true;
+   if(d%3!==0){
+    const hrs=(45+((d*13+mo*7)%145))/60;
+    const subject=['English','Programming','Revision','ICT'][d%4];
+    mock.studies.push({date:key+'-'+pad2(d),hours:hrs,subject});
+   }
+   if(d%8!==0){
+    mock.sleeps.push({date:key+'-'+pad2(d),hours:5.5+((d*3+mo*2)%13)*.23});
+   }
+  }
+ }
+ return mock;
+}
+function ptAnaSource(){
+ if(ptAnaDemo){if(!ptAnaDemoSnapshot)ptAnaDemoSnapshot=ptAnaDemoSource();return ptAnaDemoSnapshot;}
+ return {habitsMap,checks,studies,sleeps};
+}
+function ptAnaChangeDemo(){
+ ptAnaDemo=!ptAnaDemo;
+ ptAnaDemoSnapshot=null;
+ const b=$('anaDemoButton');
+ if(b){b.textContent=ptAnaDemo?'Use My Data':'Try Demo Data';b.classList.toggle('primary',ptAnaDemo);}
+ renderAnalytics();
+}
+function ptAnaToggleDemo(){ptAnaChangeDemo();}
+function ptAnaInit(){
+ const y=$('anaYear'),m=$('anaMonth');
+ if(!y||!m)return;
+ const currentYear=new Date().getFullYear();
+ y.replaceChildren();
+ for(let n=currentYear-5;n<=currentYear+1;n++)y.add(new Option(n,n));
+ m.innerHTML=monthNames.map((name,i)=>'<option value="'+i+'">'+name+'</option>').join('');
+ y.value=currentYear;m.value=new Date().getMonth();
+ ptAnaDemo=false;ptAnaDemoSnapshot=null;
+ const b=$('anaDemoButton');
+ if(b){b.textContent='Try Demo Data';b.classList.remove('primary');}
+}
+function ptAnaEsc(s){return esc(String(s));}
+function ptAnaHours(n){return n==null?'—':fmtTime(n);}
+function ptAnaPct(n){return n==null?'—':String(n)+'%';}
+function ptAnaDelta(current,previous,unit){
+ if(current==null||previous==null)return 'No prior-month comparison';
+ const diff=current-previous;
+ if(Math.abs(diff)<.05)return 'Same as previous month';
+ return (diff>0?'+':'')+(unit==='pp'?Math.round(diff):diff.toFixed(1))+(unit==='pp'?' pp':' h')+' vs previous month';
+}
+function ptAnaInsights(thisMonth,previous){
+ const out=[];
+ if(!thisMonth.hasEntries){out.push('No recorded activity found for this month. Add records or switch on Demo Data.');return out;}
+ if(thisMonth.habitPct!=null){
+  out.push('Habits: '+thisMonth.done+' of '+thisMonth.planned+' scheduled checkmarks completed ('+thisMonth.habitPct+'%). '+ptAnaDelta(thisMonth.habitPct,previous.habitPct,'pp')+'.');
+  if(thisMonth.habitItems.length){
+   const top=[...thisMonth.habitItems].filter(x=>x.pct!==null).sort((a,b)=>b.pct-a.pct)[0];
+   if(top)out.push('Most consistent habit: '+top.name+' with '+top.pct+'% completion.');
+  }
+ }
+ if(thisMonth.study.length)out.push('Study: '+ptAnaHours(thisMonth.studyTotal)+' across '+thisMonth.study.length+' sessions. '+ptAnaDelta(thisMonth.studyTotal,previous.studyTotal,'h')+'.');
+ else out.push('No study sessions logged for this month.');
+ if(thisMonth.sleep.length){
+  const within=thisMonth.sleepBands[1]+thisMonth.sleepBands[2];
+  out.push('Sleep: average '+ptAnaHours(thisMonth.sleepAvg)+' from '+thisMonth.sleep.length+' recorded nights. '+within+' nights met or exceeded your minimum '+ptAnaHours(thisMonth.sleepLow)+' reference.');
+ }else out.push('No sleep nights recorded for this month.');
+ if(thisMonth.planned>0)out.push('Longest run of fully completed habit days: '+thisMonth.bestStreak+' day(s).');
+ return out;
+}
+/* END ANALYTICS DATA */
+
 const active= sessionStorage.getItem('pt_active_user');
 if(active&&ptAccounts()[active]){ptCurrentUser=active;ptLoadUser(active);ptEnterApp()}
 
