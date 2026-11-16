@@ -2751,9 +2751,13 @@ function ptAnaExportCSV(){
  const rows=[['Month','Habit Completion %','Study Total Hours','Average Sleep Hours','Study Sessions','Sleep Nights'],
   ...months.map(x=>[x.key,x.habitPct==null?'':x.habitPct,x.study.length?x.studyTotal.toFixed(2):'',x.sleepAvg==null?'':x.sleepAvg.toFixed(2),x.study.length,x.sleep.length])];
  const csv='\ufeff'+rows.map(row=>row.map(safe).join(',')).join('\r\n');
- const blob=new Blob([csv],{type:'text/csv;charset=utf-8'}),url=URL.createObjectURL(blob);
- const a=document.createElement('a');a.href=url;a.download='personal-tracker-analytics-'+y+'-'+pad2(m+1)+'-'+filters.range+'months'+(ptAnaDemo?'-DEMO':'')+'.csv';
- document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),3000);
+ const filename='personal-tracker-analytics-'+y+'-'+pad2(m+1)+'-'+filters.range+'months'+(ptAnaDemo?'-DEMO':'')+'.csv';
+ saveExport(filename,csv,()=>{
+  const blob=new Blob([csv],{type:'text/csv;charset=utf-8'}),url=URL.createObjectURL(blob);
+  const a=document.createElement('a');a.href=url;a.download=filename;
+  document.body.appendChild(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),3000);
+ });
 }
 
 /* END ANALYTICS DATA */
