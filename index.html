@@ -2510,8 +2510,8 @@ function ptAnaMonth(src,y,m){
  const key=ptAnaKey(y,m),days=monthDays(y,m),current=today(),present=current.slice(0,7);
  const limit=key>present?0:key===present?Math.min(days,+current.slice(-2)):days;
  const habits=ptAnaMonthHabits(src,y,m);
- const ms=src.studies.filter(x=>x.date&&x.date.slice(0,7)===key&&Number.isFinite(x.hours)&&x.hours>0);
- const ns=src.sleeps.filter(x=>x.date&&x.date.slice(0,7)===key&&Number.isFinite(x.hours)&&x.hours>0);
+ const ms=src.studies.filter(x=>x.date&&x.date.slice(0,7)===key&&x.date<=current&&Number.isFinite(x.hours)&&x.hours>0);
+ const ns=src.sleeps.filter(x=>x.date&&x.date.slice(0,7)===key&&x.date<=current&&Number.isFinite(x.hours)&&x.hours>0);
  const studyDaily=Array(days).fill(0),sleepDaily=Array(days).fill(null);
  const sleepCounts=Array(days).fill(0),habitDaily=Array(days).fill(null);
  const subjectMap=new Map(),habitItems=[],dayHasWork=new Set();
@@ -2817,7 +2817,10 @@ function ptAnaPdfMonthly(doc,selected,previous){
  const habitItems=selected.habitItems;
  if(!habitItems.length){doc.setFontSize(9);doc.text('No habit schedule for this month.',14,y);y+=12;}
  else for(const h of habitItems){
-  if(y>194)break;
+  if(y>238){
+   ptAnaPdfFooter(doc,doc.internal.getNumberOfPages());doc.addPage();
+   ptAnaPdfHeader(doc,'Monthly Detail (cont.)',title,'month');y=72;
+  }
   doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(40,65,48);
   doc.text(String(h.name).slice(0,32),14,y);
   doc.text(h.done+' / '+h.planned+' ('+ptAnaPct(h.pct)+')',190,y,{align:'right'});
@@ -2825,13 +2828,17 @@ function ptAnaPdfMonthly(doc,selected,previous){
   doc.setFillColor(98,140,114);doc.roundedRect(14,y+3,182*Math.max(0,Math.min(100,h.pct||0))/100,3,1.5,1.5,'F');
   y+=17;
  }
- y=Math.min(223,Math.max(y+8,115));
+ y+=9;
+ if(y>241){
+  ptAnaPdfFooter(doc,doc.internal.getNumberOfPages());doc.addPage();
+  ptAnaPdfHeader(doc,'Monthly Totals',title,'month');y=72;
+ }
  doc.setFont('helvetica','bold');doc.setFontSize(10);doc.setTextColor(38,59,44);doc.text('Monthly totals',14,y);y+=10;
  doc.setFont('helvetica','normal');doc.setFontSize(9);
  doc.text('Study: '+selected.study.length+' sessions | '+ptAnaHours(selected.studyTotal)+' total',14,y);y+=7;
  doc.text('Sleep: '+selected.sleep.length+' nights | '+ptAnaHours(selected.sleepTotal)+' total | '+ptAnaHours(selected.sleepAvg)+' average',14,y);y+=7;
  doc.text('Habit checks: '+selected.done+' / '+selected.planned+' | Best streak: '+selected.bestStreak+' days',14,y);
- ptAnaPdfFooter(doc,3);
+ ptAnaPdfFooter(doc,doc.internal.getNumberOfPages());
 }
 function ptAnaPdfAnnual(doc,stats,year){
  ptAnaPdfHeader(doc,'Yearly Overview',String(year)+' / January - December','year');
@@ -2843,7 +2850,7 @@ function ptAnaPdfAnnual(doc,stats,year){
   if(item.month%2===1){doc.setFillColor(248,250,248);doc.rect(14,y-7,182,11,'F');}
   doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(45,68,51);
   doc.text(monthNames[item.month].slice(0,12),18,y);
-  doc.text(item.hasEntries?ptAnaPct(item.habitPct):'—'.replace('—','N/A'),71,y);
+  doc.text(item.hasEntries?ptAnaPct(item.habitPct):'N/A',71,y);
   doc.text(item.study.length?ptAnaHours(item.studyTotal):'N/A',111,y);
   doc.text(item.sleep.length?ptAnaHours(item.sleepAvg):'N/A',164,y);
   y+=14;
