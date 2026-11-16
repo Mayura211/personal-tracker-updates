@@ -614,6 +614,11 @@ nav{flex-wrap:wrap}
 .pt-chart-goal small{flex-basis:100%;line-height:1.4}
 .pt-chart-message{min-height:0;font-size:11px;font-weight:600;color:var(--good)}
 
+.pt-chart-goal input{width:84px;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-variant-numeric:tabular-nums}
+.pt-live-clock{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-top:14px;padding:11px 13px;border:1px solid var(--line);border-radius:10px;background:var(--s2)}
+.pt-clock-caption{font-size:11px;font-weight:800;letter-spacing:.12em;color:var(--c-text)}
+#pt-live-clock{font:700 21px/1.2 ui-monospace,SFMono-Regular,Consolas,monospace;font-variant-numeric:tabular-nums;letter-spacing:.08em;color:var(--dark)}
+
 </style>
 </head>
 <body>
@@ -692,6 +697,10 @@ nav{flex-wrap:wrap}
    <div class="month" id="hMonth"></div>
    <div><span class="year" id="hYear"></span></div>
    <div class="mini-cal" id="miniCalendarBox"></div>
+   <div class="pt-live-clock" title="This device's current local time">
+    <span class="pt-clock-caption">LOCAL TIME</span>
+    <time id="pt-live-clock" aria-label="Current local time" aria-live="off">00:00:00</time>
+   </div>
   </div>
   <div class="card">
    <div class="card-title">Daily Habit Performance (This Month)</div>
@@ -783,9 +792,9 @@ nav{flex-wrap:wrap}
     
     <div class="pt-chart-goal">
       <label for="pt-study-goal">Average Study Goal</label>
-      <input id="pt-study-goal" type="number" min="0.25" max="24" step="0.25" value="2" onchange="ptApplyStudyGoal()">
+      <input id="pt-study-goal" type="text" inputmode="numeric" maxlength="5" placeholder="HH:MM" value="02:00" onchange="ptApplyStudyGoal()">
       <span>hours per day</span>
-      <small>Dashed reference line; weekly and monthly totals use the equivalent daily goal.</small>
+      <small>Enter HH:MM. Example: 0.30 or 00:30 means 30 minutes; weekly/monthly goals are scaled.</small>
     </div>
     <div class="pt-chart-message" id="pt-study-chart-message" role="status" aria-live="polite"></div>
   </div>
@@ -868,10 +877,10 @@ nav{flex-wrap:wrap}
     
     <div class="pt-chart-goal pt-sleep-goals">
       <strong>Sleep reference lines</strong>
-      <label for="pt-sleep-low">Bad below</label><input id="pt-sleep-low" type="number" min="0.25" max="23" step="0.25" value="6">
-      <label for="pt-sleep-mid">Good guide</label><input id="pt-sleep-mid" type="number" min="0.50" max="23.5" step="0.25" value="7">
-      <label for="pt-sleep-high">Excellent from</label><input id="pt-sleep-high" type="number" min="1" max="24" step="0.25" value="8">
-      <span>hours per night</span><button type="button" onclick="ptApplySleepGuides()">Apply Lines</button>
+      <label for="pt-sleep-low">Bad below</label><input id="pt-sleep-low" type="text" inputmode="numeric" maxlength="5" placeholder="HH:MM" value="06:00">
+      <label for="pt-sleep-mid">Good guide</label><input id="pt-sleep-mid" type="text" inputmode="numeric" maxlength="5" placeholder="HH:MM" value="07:00">
+      <label for="pt-sleep-high">Excellent from</label><input id="pt-sleep-high" type="text" inputmode="numeric" maxlength="5" placeholder="HH:MM" value="08:00">
+      <span>HH:MM (0.30 = 30 min)</span><button type="button" onclick="ptApplySleepGuides()">Apply Lines</button>
     </div>
     <div class="pt-chart-message" id="pt-sleep-chart-message" role="status" aria-live="polite"></div>
   </div>
@@ -1512,6 +1521,32 @@ function ptChartValidMode(mode){return ['bar','line','both'].includes(mode);}
 function ptChartValidNumber(value,low,high){
  return typeof value==='number'&&Number.isFinite(value)&&value>=low&&value<=high;
 }
+
+// Interpret numeric-looking time entries as HH:MM, not decimal hours.
+// E.g. "0.30" means 30 minutes, and "1.30" means 1 hour 30 minutes.
+function ptParseDurationInput(value){
+ const match=/^(\d{1,2})(?:[:.](\d{1,2}))?$/.exec(String(value).trim());
+ if(!match)return null;
+ const hours=Number(match[1]),minutes=match[2]===undefined?0:Number(match[2]);
+ if(hours>24||minutes>59||(hours===24&&minutes!==0))return null;
+ return (hours*60+minutes)/60;
+}
+function ptDurationInputValue(hours){
+ const total=Math.round(hours*60);
+ return String(Math.floor(total/60)).padStart(2,'0')+':'+String(total%60).padStart(2,'0');
+}
+function ptRefreshLiveClock(){
+ const target=$('pt-live-clock');
+ if(!target)return;
+ const time=new Date(),pad=n=>String(n).padStart(2,'0');
+ const value=pad(time.getHours())+':'+pad(time.getMinutes())+':'+pad(time.getSeconds());
+ target.textContent=value;
+ target.dateTime=value;
+}
+ptRefreshLiveClock();
+setInterval(ptRefreshLiveClock,1000);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)ptRefreshLiveClock()});
+
 function ptLoadChartPrefs(){
  ptChartPrefs={...PT_CHART_DEFAULTS};
  try{
@@ -1526,7 +1561,7 @@ function ptLoadChartPrefs(){
   }
  }catch(e){}
  const inputs=[['pt-study-goal',ptChartPrefs.studyGoal],['pt-sleep-low',ptChartPrefs.sleepLow],['pt-sleep-mid',ptChartPrefs.sleepMid],['pt-sleep-high',ptChartPrefs.sleepHigh]];
- for(const [id,value] of inputs){const input=$(id);if(input)input.value=value;}
+ for(const [id,value] of inputs){const input=$(id);if(input)input.value=ptDurationInputValue(value);}
  ptSyncChartStyle('study');ptSyncChartStyle('sleep');
  const m1=$('pt-study-chart-message'),m2=$('pt-sleep-chart-message');
  if(m1)m1.textContent='';if(m2)m2.textContent='';
@@ -1550,18 +1585,26 @@ function ptSetChartStyle(kind,style){
  if(kind==='study')renderStudy();else renderSleep();
 }
 function ptApplyStudyGoal(){
- const goal=Number($('pt-study-goal').value);
- if(!ptChartValidNumber(goal,.25,24)){ptChartMessage('study','Choose a study goal from 0.25 to 24 hours.',true);return;}
+ const goal=ptParseDurationInput($('pt-study-goal').value);
+ if(goal===null||!ptChartValidNumber(goal,.25,24)){
+  ptChartMessage('study','Enter HH:MM from 00:15 to 24:00; 0.30 = 30 minutes.',true);return;
+ }
  ptChartPrefs.studyGoal=goal;ptSaveChartPrefs();
+ $('pt-study-goal').value=ptDurationInputValue(goal);
  ptChartMessage('study','Saved daily study goal: '+fmtTime(goal));
  renderStudy();
 }
 function ptApplySleepGuides(){
- const low=Number($('pt-sleep-low').value),mid=Number($('pt-sleep-mid').value),high=Number($('pt-sleep-high').value);
- if(!ptChartValidNumber(low,.25,23)||!ptChartValidNumber(mid,.5,23.5)||!ptChartValidNumber(high,1,24)||!(low<mid&&mid<high)){
-  ptChartMessage('sleep','Use three increasing sleep reference times, from 0.25 to 24 hours.',true);return;
+ const low=ptParseDurationInput($('pt-sleep-low').value);
+ const mid=ptParseDurationInput($('pt-sleep-mid').value);
+ const high=ptParseDurationInput($('pt-sleep-high').value);
+ if(low===null||mid===null||high===null||
+    !ptChartValidNumber(low,.25,23)||!ptChartValidNumber(mid,.5,23.5)||
+    !ptChartValidNumber(high,1,24)||!(low<mid&&mid<high)){
+  ptChartMessage('sleep','Enter three increasing HH:MM times (e.g. 6.30 = 6h 30min).',true);return;
  }
  ptChartPrefs.sleepLow=low;ptChartPrefs.sleepMid=mid;ptChartPrefs.sleepHigh=high;
+ for(const [id,value] of [['pt-sleep-low',low],['pt-sleep-mid',mid],['pt-sleep-high',high]])$(id).value=ptDurationInputValue(value);
  ptSaveChartPrefs();ptChartMessage('sleep','Sleep reference lines saved.');renderSleep();
 }
 function ptPerformanceGuides(kind){
