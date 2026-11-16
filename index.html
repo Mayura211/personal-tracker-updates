@@ -2638,6 +2638,251 @@ function ptAnaInsights(thisMonth,previous){
 }
 /* END ANALYTICS DATA */
 
+/* ANALYTICS PRESENTATION AND PDF */
+function ptAnaMakeChart(id,type,labels,datasets,options){
+ const element=$(id);
+ if(!element||typeof Chart==='undefined')return;
+ if(ptAnaCharts[id]){ptAnaCharts[id].destroy();ptAnaCharts[id]=null;}
+ const isPie=type==='doughnut';
+ const isDark=document.documentElement.getAttribute('data-theme')==='dark';
+ const labelColor=cssVar('--c-text')||(isDark?'#d3ded4':'#627469');
+ const gridColor=cssVar('--c-grid')||(isDark?'rgba(255,255,255,.08)':'rgba(0,0,0,.07)');
+ const scales=isPie?{}:{
+  x:{grid:{display:false},ticks:{color:labelColor,maxTicksLimit:id.indexOf('Daily')>=0?12:12,maxRotation:0,font:{size:10}}},
+  y:{beginAtZero:true,grid:{color:gridColor},ticks:{color:labelColor,font:{size:10},
+    callback:function(value){return options.format==='pct'?value+'%':options.format==='hour'?value+'h':value;}}}
+ };
+ if(options.max)scales.y.max=options.max;
+ const datasetStyle=datasets.map(function(d){
+  return Object.assign({borderWidth:type==='line'?2.5:1.1,tension:.3,pointRadius:type==='line'?2:0,
+   pointHoverRadius:5,fill:false,borderRadius:type==='bar'?5:0,spanGaps:false},d);
+ });
+ ptAnaCharts[id]=new Chart(element,{
+  type:type,data:{labels:labels,datasets:datasetStyle},
+  options:{responsive:true,maintainAspectRatio:false,animation:{duration:280},
+   layout:{padding:{top:8,bottom:3}},
+   plugins:{legend:{display:isPie||datasets.length>1,position:'bottom',
+    labels:{color:labelColor,boxWidth:10,boxHeight:10,padding:14,font:{size:10}}},
+    tooltip:{callbacks:{label:function(item){
+     const val=isPie?item.parsed:item.parsed.y;
+     return ' '+item.dataset.label+(isPie?'':':')+' '+(options.format==='pct'?Math.round(val)+'%':options.format==='hour'?ptAnaHours(val):type==='doughnut'?item.label+': '+(options.pieUnit==='hours'?ptAnaHours(val):val+' nights'):val);
+    }}}},scales:scales,cutout:isPie?'68%':undefined}
+ });
+}
+function ptAnaMonthlyCanvas(source,selected,yearStats){
+ const labs=monthNames.map(n=>n.slice(0,3));
+ const future=ptAnaKey(new Date().getFullYear(),new Date().getMonth());
+ const habitValues=yearStats.map(x=>x.key>future||!x.hasEntries?null:x.habitPct);
+ const studyValues=yearStats.map(x=>x.key>future||!x.study.length?null:Number(x.studyTotal.toFixed(2)));
+ const sleepValues=yearStats.map(x=>x.key>future?null:x.sleepAvg===null?null:Number(x.sleepAvg.toFixed(2)));
+ ptAnaMakeChart('anaHabitYear','bar',labs,[{label:'Completion',data:habitValues,
+  backgroundColor:PT_ANA_COLORS.habitSoft,borderColor:PT_ANA_COLORS.habit}],{format:'pct',max:100});
+ ptAnaMakeChart('anaStudyYear','line',labs,[{label:'Study time',data:studyValues,
+  borderColor:PT_ANA_COLORS.study,backgroundColor:PT_ANA_COLORS.studySoft,pointBackgroundColor:PT_ANA_COLORS.study}],{format:'hour'});
+ ptAnaMakeChart('anaSleepYear','line',labs,[{label:'Average sleep',data:sleepValues,
+  borderColor:PT_ANA_COLORS.sleep,backgroundColor:PT_ANA_COLORS.sleepSoft,pointBackgroundColor:PT_ANA_COLORS.sleep}],{format:'hour'});
+ const days=Array.from({length:selected.days},(_,i)=>String(i+1));
+ ptAnaMakeChart('anaHabitDaily','line',days,[{label:'Habit completion',data:selected.habitDaily,
+  borderColor:PT_ANA_COLORS.habit,backgroundColor:PT_ANA_COLORS.habitSoft,
+  pointBackgroundColor:PT_ANA_COLORS.habit}],{format:'pct',max:100});
+ const studyValuesDaily=selected.studyDaily.map((h,i)=>i<selected.limit?Number(h.toFixed(2)):null);
+ const sleepValuesDaily=selected.sleepDaily.map((h,i)=>i<selected.limit?(h===null?null:Number(h.toFixed(2))):null);
+ ptAnaMakeChart('anaDailyHours','line',days,[
+  {label:'Study',data:studyValuesDaily,borderColor:PT_ANA_COLORS.study,pointBackgroundColor:PT_ANA_COLORS.study},
+  {label:'Sleep',data:sleepValuesDaily,borderColor:PT_ANA_COLORS.sleep,pointBackgroundColor:PT_ANA_COLORS.sleep}
+ ],{format:'hour'});
+ const bySubject=selected.subjects.slice(0,5);
+ const other=selected.subjects.slice(5).reduce((n,x)=>n+x[1],0);
+ if(other>0)bySubject.push(['Other',other]);
+ const subjLabels=bySubject.length?bySubject.map(x=>x[0]):['No study data'];
+ const subjData=bySubject.length?bySubject.map(x=>Number(x[1].toFixed(2))):[1];
+ ptAnaMakeChart('anaSubjects','doughnut',subjLabels,[{label:'Study time',data:subjData,
+  backgroundColor:bySubject.length?['#628dc8','#6eaa8b','#cfa866','#9b80bb','#77a7a9','#d88d80']:['#dce4dd'],
+  borderColor:cssVar('--surface'),borderWidth:2}],{format:'hour',pieUnit:'hours'});
+ const sleepCount=selected.sleepBands.reduce((a,b)=>a+b,0);
+ ptAnaMakeChart('anaSleepBands','doughnut',['Below minimum','Within range','Excellent+'],[{
+  label:'Nights',data:sleepCount?selected.sleepBands:[1,0,0],
+  backgroundColor:sleepCount?[PT_ANA_COLORS.red,PT_ANA_COLORS.gold,PT_ANA_COLORS.habit]:['#dce4dd','#dce4dd','#dce4dd'],
+  borderColor:cssVar('--surface'),borderWidth:2
+ }],{pieUnit:'nights'});
+}
+function renderAnalytics(){
+ const yearInput=$('anaYear'),monthInput=$('anaMonth');
+ if(!yearInput||!monthInput||!ptCurrentUser)return;
+ const y=Number(yearInput.value),m=Number(monthInput.value);
+ if(!Number.isInteger(y)||!Number.isInteger(m)||m<0||m>11)return;
+ const source=ptAnaSource(),selected=ptAnaMonth(source,y,m);
+ const prevDate=new Date(y,m-1,1);
+ const previous=ptAnaMonth(source,prevDate.getFullYear(),prevDate.getMonth());
+ if(!previous.hasEntries){previous.habitPct=null;previous.studyTotal=null;previous.sleepAvg=null;}
+ const yearStats=Array.from({length:12},(_,month)=>ptAnaMonth(source,y,month));
+ const title=monthNames[m]+' '+y;
+ $('anaMonthSubtitle').textContent=title+' · '+selected.limit+' elapsed day(s)';
+ const notice=$('anaDataNotice');
+ if(ptAnaDemo){
+  notice.textContent='DEMO MODE — The charts below use sample data only. Your real saved records are not modified.';
+  notice.dataset.demo='true';
+ }else{
+  notice.dataset.demo='false';
+  notice.textContent=selected.hasEntries?'Showing records from your local account for '+title+'.':'No recorded entries for '+title+'. Switch to Demo Data to explore the dashboard.';
+ }
+ const metrics=[
+  ['Habit Completion',ptAnaPct(selected.habitPct),selected.done+' of '+selected.planned+' scheduled checkmarks'],
+  ['Total Study Time',ptAnaHours(selected.studyTotal),selected.study.length+' study sessions'],
+  ['Average Sleep',ptAnaHours(selected.sleepAvg),selected.sleep.length+' recorded nights'],
+  ['Days With Activity',selected.activityDays+' / '+selected.limit,'Days with any recorded activity']
+ ];
+ $('anaKpis').innerHTML=metrics.map(function(item){
+  return '<div class="ana-kpi"><small>'+ptAnaEsc(item[0])+'</small><strong>'+ptAnaEsc(item[1])+'</strong><span class="ana-kpi-sub">'+ptAnaEsc(item[2])+'</span></div>';
+ }).join('');
+ const habitList=$('anaHabitBreakdown');
+ if(!selected.habitItems.length)habitList.innerHTML='<div class="ana-empty">No habits scheduled in this selected month.</div>';
+ else habitList.innerHTML=selected.habitItems.map(function(h){
+  return '<div><div class="ana-habit-name"><span>'+ptAnaEsc(h.name)+'</span><span>'+h.done+'/'+h.planned+' · '+ptAnaPct(h.pct)+'</span></div><div class="ana-meter"><span style="width:'+Math.max(0,Math.min(100,h.pct||0))+'%"></span></div></div>';
+ }).join('');
+ const insights=ptAnaInsights(selected,previous);
+ $('anaInsights').innerHTML=insights.map(function(message,i){
+  return '<div class="ana-insight"><span class="ana-insight-mark">'+(i+1)+'</span><p>'+ptAnaEsc(message)+'</p></div>';
+ }).join('');
+ ptAnaMonthlyCanvas(source,selected,yearStats);
+}
+function ptAnaPdfHeader(doc,title,subtitle,mode){
+ const w=210;
+ doc.setFillColor(35,65,50);doc.rect(0,0,w,39,'F');
+ doc.setTextColor(201,232,206);doc.setFont('helvetica','bold');doc.setFontSize(8);
+ doc.text('PERSONAL TRACKER   /   ANALYTICS REPORT',14,12);
+ doc.setTextColor(255,255,255);doc.setFontSize(20);doc.text(title,14,25);
+ doc.setFont('helvetica','normal');doc.setTextColor(219,238,221);doc.setFontSize(9);doc.text(subtitle,14,33);
+ doc.setTextColor(93,111,97);doc.setFontSize(8);
+ doc.text('Account: '+String(ptCurrentUser||'User').slice(0,44)+'     Generated: '+new Date().toLocaleDateString('en-GB')+
+  (ptAnaDemo?'     SAMPLE DATA':''),14,47);
+ doc.setDrawColor(220,230,219);doc.line(14,52,196,52);
+}
+function ptAnaPdfStat(doc,x,y,label,value,width){
+ doc.setFillColor(245,249,246);doc.setDrawColor(220,232,221);doc.roundedRect(x,y,width,28,3,3,'FD');
+ doc.setTextColor(92,116,98);doc.setFont('helvetica','normal');doc.setFontSize(8);
+ doc.text(String(label),x+7,y+9);
+ doc.setTextColor(38,58,44);doc.setFont('helvetica','bold');doc.setFontSize(16);
+ doc.text(String(value),x+7,y+22);
+}
+function ptAnaPdfFooter(doc,page){
+ doc.setDrawColor(222,232,224);doc.line(14,280,196,280);
+ doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(103,120,107);
+ doc.text('Personal Tracker  |  Private, local-first productivity analytics',14,286);
+ doc.text(String(page),193,286,{align:'right'});
+}
+function ptAnaPdfChart(doc,id,x,y,w,h,title){
+ doc.setFillColor(248,250,248);doc.setDrawColor(223,232,222);doc.roundedRect(x,y,w,h,3,3,'FD');
+ doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(40,62,45);
+ doc.text(title,x+5,y+8);
+ const chart=ptAnaCharts[id],canvas=$(id);
+ if(!chart||!canvas){doc.text('Chart unavailable',x+5,y+22);return;}
+ try{
+  chart.update('none');
+  const png=canvas.toDataURL('image/png');
+  doc.addImage(png,'PNG',x+4,y+11,w-8,h-14,undefined,'FAST');
+ }catch(e){doc.setFont('helvetica','normal');doc.text('Chart image unavailable in this browser.',x+5,y+23);}
+}
+function ptAnaPdfParagraphs(doc,items,x,y,width,maxY){
+ for(const msg of items){
+  doc.setFont('helvetica','normal');doc.setTextColor(50,70,56);doc.setFontSize(9);
+  const lines=doc.splitTextToSize('- '+String(msg).replace(/[^\x20-\x7e]/g,' '),width);
+  if(y+lines.length*5>maxY)break;
+  doc.text(lines,x,y);y+=lines.length*5+4;
+ }
+ return y;
+}
+function ptAnaPdfMonthly(doc,selected,previous){
+ const title=monthNames[selected.month]+' '+selected.year;
+ ptAnaPdfHeader(doc,'Monthly Performance',title, 'month');
+ ptAnaPdfStat(doc,14,60,'HABIT COMPLETION',ptAnaPct(selected.habitPct),57);
+ ptAnaPdfStat(doc,76,60,'STUDY TIME',ptAnaHours(selected.studyTotal),57);
+ ptAnaPdfStat(doc,138,60,'AVG SLEEP',ptAnaHours(selected.sleepAvg),58);
+ doc.setFont('helvetica','bold');doc.setFontSize(11);doc.setTextColor(38,59,44);doc.text('Daily trends',14,100);
+ ptAnaPdfChart(doc,'anaHabitDaily',14,105,182,77,'Habit completion by day');
+ ptAnaPdfChart(doc,'anaDailyHours',14,188,182,77,'Study and sleep duration by day');
+ ptAnaPdfFooter(doc,1);
+ doc.addPage();
+ ptAnaPdfHeader(doc,'Monthly Insights',title,'month');
+ doc.setFont('helvetica','bold');doc.setFontSize(11);doc.setTextColor(38,59,44);doc.text('Study and sleep breakdown',14,62);
+ ptAnaPdfChart(doc,'anaSubjects',14,69,87,92,'Study by subject');
+ ptAnaPdfChart(doc,'anaSleepBands',109,69,87,92,'Sleep duration bands');
+ doc.setFont('helvetica','bold');doc.setFontSize(11);doc.setTextColor(38,59,44);doc.text('What the records show',14,173);
+ ptAnaPdfParagraphs(doc,ptAnaInsights(selected,previous),14,183,181,250);
+ ptAnaPdfFooter(doc,2);
+ doc.addPage();
+ ptAnaPdfHeader(doc,'Monthly Detail',title,'month');
+ doc.setFont('helvetica','bold');doc.setFontSize(11);doc.setTextColor(38,59,44);doc.text('Habit completion details',14,63);
+ let y=74;
+ const habitItems=selected.habitItems;
+ if(!habitItems.length){doc.setFontSize(9);doc.text('No habit schedule for this month.',14,y);y+=12;}
+ else for(const h of habitItems){
+  if(y>194)break;
+  doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(40,65,48);
+  doc.text(String(h.name).slice(0,32),14,y);
+  doc.text(h.done+' / '+h.planned+' ('+ptAnaPct(h.pct)+')',190,y,{align:'right'});
+  doc.setFillColor(231,238,231);doc.roundedRect(14,y+3,182,3,1.5,1.5,'F');
+  doc.setFillColor(98,140,114);doc.roundedRect(14,y+3,182*Math.max(0,Math.min(100,h.pct||0))/100,3,1.5,1.5,'F');
+  y+=17;
+ }
+ y=Math.min(223,Math.max(y+8,115));
+ doc.setFont('helvetica','bold');doc.setFontSize(10);doc.setTextColor(38,59,44);doc.text('Monthly totals',14,y);y+=10;
+ doc.setFont('helvetica','normal');doc.setFontSize(9);
+ doc.text('Study: '+selected.study.length+' sessions | '+ptAnaHours(selected.studyTotal)+' total',14,y);y+=7;
+ doc.text('Sleep: '+selected.sleep.length+' nights | '+ptAnaHours(selected.sleepTotal)+' total | '+ptAnaHours(selected.sleepAvg)+' average',14,y);y+=7;
+ doc.text('Habit checks: '+selected.done+' / '+selected.planned+' | Best streak: '+selected.bestStreak+' days',14,y);
+ ptAnaPdfFooter(doc,3);
+}
+function ptAnaPdfAnnual(doc,stats,year){
+ ptAnaPdfHeader(doc,'Yearly Overview',String(year)+' / January - December','year');
+ doc.setFont('helvetica','bold');doc.setFontSize(11);doc.setTextColor(38,59,44);doc.text('Month-by-month totals',14,62);
+ doc.setFillColor(236,245,237);doc.rect(14,69,182,10,'F');
+ doc.setFontSize(9);doc.text('Month',18,76);doc.text('Habits',71,76);doc.text('Study total',111,76);doc.text('Avg sleep',164,76);
+ let y=87;
+ for(const item of stats){
+  if(item.month%2===1){doc.setFillColor(248,250,248);doc.rect(14,y-7,182,11,'F');}
+  doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(45,68,51);
+  doc.text(monthNames[item.month].slice(0,12),18,y);
+  doc.text(item.hasEntries?ptAnaPct(item.habitPct):'—'.replace('—','N/A'),71,y);
+  doc.text(item.study.length?ptAnaHours(item.studyTotal):'N/A',111,y);
+  doc.text(item.sleep.length?ptAnaHours(item.sleepAvg):'N/A',164,y);
+  y+=14;
+ }
+ const totalStudy=stats.reduce((n,item)=>n+item.studyTotal,0);
+ const allNights=stats.reduce((n,item)=>n+item.sleep.length,0);
+ const allHours=stats.reduce((n,item)=>n+item.sleepTotal,0);
+ doc.setFillColor(236,245,237);doc.roundedRect(14,257,182,14,3,3,'F');
+ doc.setFont('helvetica','bold');doc.setFontSize(9);doc.text('Year totals:  Study '+ptAnaHours(totalStudy)+'   |   Sleep '+ptAnaHours(allHours)+'  ('+allNights+' nights)',19,266);
+ ptAnaPdfFooter(doc,1);
+ doc.addPage();
+ ptAnaPdfHeader(doc,'Yearly Charts',String(year)+' / January - December','year');
+ ptAnaPdfChart(doc,'anaHabitYear',14,60,182,65,'Habit completion across months');
+ ptAnaPdfChart(doc,'anaStudyYear',14,132,182,65,'Study time across months');
+ ptAnaPdfChart(doc,'anaSleepYear',14,204,182,65,'Average sleep duration across months');
+ ptAnaPdfFooter(doc,2);
+}
+function ptAnaExport(mode){
+ if(!window.jspdf||!window.jspdf.jsPDF){alert('PDF component unavailable.');return;}
+ if(!ptCurrentUser){alert('Sign in to export analytics.');return;}
+ try{
+  const year=Number($('anaYear').value),month=Number($('anaMonth').value);
+  const src=ptAnaSource(),current=ptAnaMonth(src,year,month);
+  const date=new Date(year,month-1,1);
+  const previous=ptAnaMonth(src,date.getFullYear(),date.getMonth());
+  if(!previous.hasEntries){previous.habitPct=null;previous.studyTotal=null;}
+  const doc=new window.jspdf.jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
+  if(mode==='month')ptAnaPdfMonthly(doc,current,previous);
+  else if(mode==='year')ptAnaPdfAnnual(doc,Array.from({length:12},(_,i)=>ptAnaMonth(src,year,i)),year);
+  else throw Error('Unsupported report type');
+  const filename='personal-tracker-analytics-'+mode+'-'+year+(mode==='month'?'-'+pad2(month+1):'')+(ptAnaDemo?'-DEMO':'')+'.pdf';
+  savePdf(doc,filename);
+ }catch(error){
+  console.error('Analytics PDF failed',error);
+  alert('Could not export analytics PDF. Please retry. '+(error&&error.message?error.message:''));
+ }
+}
+
+
 const active= sessionStorage.getItem('pt_active_user');
 if(active&&ptAccounts()[active]){ptCurrentUser=active;ptLoadUser(active);ptEnterApp()}
 
