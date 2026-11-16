@@ -2,6 +2,12 @@
 
 Windows habit, study and sleep tracker with GitHub release checking.
 
+## What's new in v1.0.6
+
+- Study Goal and Sleep Reference Lines now accept **hours:minutes** values: `0.30` or `00:30` means 30 minutes, and `6.45` means 6 hours 45 minutes.
+- Existing saved chart preferences remain supported and display as `HH:MM` without changing recorded data.
+- The Habit Tracker calendar now includes a live local `HH:MM:SS` clock that refreshes every second.
+
 ## What's new in v1.0.5
 
 - Independent Bar Only / Line Only / Both chart styles for Study and Sleep Performance Analysis.
