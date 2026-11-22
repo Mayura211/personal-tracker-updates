@@ -603,7 +603,9 @@ nav{flex-wrap:wrap}
 #pt-update-link[hidden]{display:none}
 @keyframes pt-update-spin{to{transform:rotate(360deg)}}
 @media(prefers-reduced-motion:reduce){.pt-update-pill[data-state="checking"] #pt-update-icon{animation:none}.pt-update-pill{transition:none}}
-/* Study and Sleep chart customization */
+/* Study, Sleep and Habit chart customization */
+.pt-habit-mode{justify-content:flex-start;gap:5px;flex-wrap:wrap;margin:4px 0 12px}
+.pt-habit-mode button{padding:7px 9px;font-size:11px}
 .pt-chart-tools{display:flex;flex-direction:column;gap:12px;background:var(--s2);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin:0 0 16px}
 .pt-chart-mode-toolbar,.pt-chart-goal{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .pt-chart-mode-toolbar{justify-content:flex-end}
@@ -704,6 +706,12 @@ nav{flex-wrap:wrap}
   </div>
   <div class="card">
    <div class="card-title">Daily Habit Performance (This Month)</div>
+   <div class="pt-chart-mode-toolbar pt-habit-mode" role="group" aria-label="Habit chart style">
+    <span class="pt-chart-mode-label">Chart style</span>
+    <button type="button" data-pt-chart="habit" data-pt-style="bar" onclick="ptSetChartStyle('habit','bar')">Bar Only</button>
+    <button type="button" data-pt-chart="habit" data-pt-style="line" onclick="ptSetChartStyle('habit','line')">Line Only</button>
+    <button type="button" data-pt-chart="habit" data-pt-style="both" onclick="ptSetChartStyle('habit','both')">Both</button>
+   </div>
    <div class="chart"><canvas id="habitLine"></canvas></div>
    <div id="habitGoodLevel" class="label" hidden></div>
   </div>
@@ -1280,25 +1288,7 @@ function renderHabits(){
  const goodLabel=$('habitGoodLevel');
  goodLabel.hidden=!habits.length;
  goodLabel.textContent=`Good level · 50% (${goodLevel} of ${habitMax} habits)`;
- makeChart('habitLine','line',daily.map((_,i)=>i+1),daily.map((v,i)=>dateKey(hYear,hMonth,i+1)<=t?v:null),{
-  dataset:{spanGaps:false,clip:6},
-  layout:{padding:{top:10,right:10}},
-  plugins:{legend:{display:false}},
-  scales:{y:{
-   min:0,max:habitMax,
-   afterBuildTicks:scale=>{
-    if(habits.length&&!scale.ticks.some(tick=>tick.value===goodLevel)){
-     scale.ticks.push({value:goodLevel});
-     scale.ticks.sort((a,b)=>a.value-b.value);
-    }
-   },
-   ticks:{autoSkip:false,precision:0,callback:value=>habits.length&&value===goodLevel?'Good · '+value:value},
-   grid:{
-    color:ctx=>habits.length&&ctx.tick?.value===goodLevel?cssVar('--good'):cssVar('--c-grid'),
-    lineWidth:ctx=>habits.length&&ctx.tick?.value===goodLevel?2:1
-   }
-  }}
- });
+ ptRenderHabitPerformanceChart(daily,habits,t);
 
  const mShort=monthNames[hMonth].slice(0,3);
  let labels=[], vol=[], yAxisMax=Math.max(1,habits.length);
@@ -1428,6 +1418,38 @@ function makeChart(id,type,labels,data,o={}){
  charts[id]=new Chart($(id),{type,data:{labels,datasets:[ds]},options:merge(base,opt)});
 }
 
+
+// Renders the Habit chart in exactly the same Bar / Line / Both modes as Study and Sleep.
+function ptRenderHabitPerformanceChart(daily,habits,cutoff){
+ if(typeof Chart==='undefined')return;
+ const id='habitLine';if(charts[id])charts[id].destroy();
+ const mode=ptChartPrefs.habitStyle,max=Math.max(1,habits.length),color=cssVar('--c-line');
+ const values=daily.map((v,i)=>dateKey(hYear,hMonth,i+1)<=cutoff?v:null);
+ charts[id]=new Chart($(id),{
+  type:'bar',data:{labels:daily.map((_,i)=>i+1),datasets:[
+   {type:'bar',label:'Habits completed (Bar)',data:values,hidden:mode==='line',
+    backgroundColor:'rgba(85,117,86,0.35)',borderColor:color,borderWidth:1,borderRadius:3,order:2},
+   {type:'line',label:'Habit trend (Line)',data:values,hidden:mode==='bar',
+    borderColor:color,backgroundColor:'transparent',borderWidth:2.5,tension:.3,spanGaps:false,
+    pointRadius:2.5,pointHoverRadius:5,pointBackgroundColor:color,pointBorderColor:'#fff',
+    pointBorderWidth:1,order:1}
+  ]},options:{
+   responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
+   layout:{padding:{top:12,right:8}},
+   plugins:{legend:{display:false},
+    ptReferenceLines:{lines:habits.length?[{value:habits.length/2,label:'Good level (50%)',color:'#477b55'}]:[]},
+    tooltip:{enabled:true,filter:item=>mode==='both'?item.datasetIndex===0:true,
+     callbacks:{label:c=>' '+c.parsed.y+' habits completed'}}},
+   scales:{
+    x:{title:{display:true,text:'Day of month'},grid:{color:cssVar('--c-grid')},
+     ticks:{autoSkip:true,maxTicksLimit:10,maxRotation:0}},
+    y:{min:0,max,grid:{color:cssVar('--c-grid')},title:{display:true,text:'Habits completed'},
+     ticks:{precision:0,stepSize:max<=12?1:undefined}}
+   }
+  }
+ });
+}
+
 // STUDY TRACKER
 function studyFiltered(){
  let y=+$('studyYear').value,m=+$('studyMonth').value;
@@ -1512,7 +1534,7 @@ function studySeries(records,view,y,m){
 }
 
 // User-specific chart display settings; existing study/sleep data is unchanged.
-const PT_CHART_DEFAULTS=Object.freeze({studyStyle:'both',sleepStyle:'both',studyGoal:2,sleepLow:6,sleepMid:7,sleepHigh:8});
+const PT_CHART_DEFAULTS=Object.freeze({habitStyle:'both',studyStyle:'both',sleepStyle:'both',studyGoal:2,sleepLow:6,sleepMid:7,sleepHigh:8});
 let ptChartPrefs={...PT_CHART_DEFAULTS};
 function ptChartKey(){
  return 'pt_chart_preferences_'+(typeof ptCurrentUser==='string'&&ptCurrentUser?ptCurrentUser:'guest');
@@ -1552,7 +1574,7 @@ function ptLoadChartPrefs(){
  try{
   const prefs=JSON.parse(localStorage.getItem(ptChartKey())||'{}');
   if(prefs&&typeof prefs==='object'&&!Array.isArray(prefs)){
-   for(const key of ['studyStyle','sleepStyle'])if(ptChartValidMode(prefs[key]))ptChartPrefs[key]=prefs[key];
+   for(const key of ['habitStyle','studyStyle','sleepStyle'])if(ptChartValidMode(prefs[key]))ptChartPrefs[key]=prefs[key];
    if(ptChartValidNumber(prefs.studyGoal,.25,24))ptChartPrefs.studyGoal=prefs.studyGoal;
    if(ptChartValidNumber(prefs.sleepLow,.25,23)&&ptChartValidNumber(prefs.sleepMid,.5,23.5)&&ptChartValidNumber(prefs.sleepHigh,1,24)
       &&prefs.sleepLow<prefs.sleepMid&&prefs.sleepMid<prefs.sleepHigh){
@@ -1562,7 +1584,7 @@ function ptLoadChartPrefs(){
  }catch(e){}
  const inputs=[['pt-study-goal',ptChartPrefs.studyGoal],['pt-sleep-low',ptChartPrefs.sleepLow],['pt-sleep-mid',ptChartPrefs.sleepMid],['pt-sleep-high',ptChartPrefs.sleepHigh]];
  for(const [id,value] of inputs){const input=$(id);if(input)input.value=ptDurationInputValue(value);}
- ptSyncChartStyle('study');ptSyncChartStyle('sleep');
+ ptSyncChartStyle('habit');ptSyncChartStyle('study');ptSyncChartStyle('sleep');
  const m1=$('pt-study-chart-message'),m2=$('pt-sleep-chart-message');
  if(m1)m1.textContent='';if(m2)m2.textContent='';
 }
@@ -1580,9 +1602,9 @@ function ptChartMessage(kind,message,error=false){
  if(n){n.textContent=message;n.style.color=error?'var(--bad)':'var(--good)';}
 }
 function ptSetChartStyle(kind,style){
- if(!['study','sleep'].includes(kind)||!ptChartValidMode(style))return;
+ if(!['habit','study','sleep'].includes(kind)||!ptChartValidMode(style))return;
  ptChartPrefs[kind+'Style']=style;ptSaveChartPrefs();ptSyncChartStyle(kind);
- if(kind==='study')renderStudy();else renderSleep();
+ if(kind==='habit')renderHabits();else if(kind==='study')renderStudy();else renderSleep();
 }
 function ptApplyStudyGoal(){
  const goal=ptParseDurationInput($('pt-study-goal').value);
