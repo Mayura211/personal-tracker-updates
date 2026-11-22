@@ -624,6 +624,41 @@ nav{flex-wrap:wrap}
 .pt-clock-caption{font-size:11px;font-weight:800;letter-spacing:.12em;color:var(--c-text)}
 #pt-live-clock{font:700 21px/1.2 ui-monospace,SFMono-Regular,Consolas,monospace;font-variant-numeric:tabular-nums;letter-spacing:.08em;color:var(--dark)}
 
+
+/* Habit Tracker only: spacing and alignment polish; other pages and behavior unchanged. */
+#habits .toolbar{gap:13px;padding:16px 18px;border-radius:16px}
+#habits .toolbar>.group:first-child{padding:7px 10px;background:var(--s2);border:1px solid var(--line);border-radius:11px;gap:9px}
+#habits .toolbar>.group:last-child{gap:7px}
+#habits .toolbar>.group:last-child button,#habits .toolbar>.group:last-child .btn{padding:9px 11px}
+#habits .toolbar select{min-width:82px}
+#habits .top,#habits .bottom{gap:15px}
+#habits .top{grid-template-columns:minmax(215px,1.05fr) minmax(360px,2.1fr) minmax(180px,.9fr);align-items:stretch}
+#habits .top>.card{min-width:0;display:flex;flex-direction:column;padding:19px}
+#habits .top>.card:nth-child(2) .chart{flex:1;min-height:205px}
+#habits .top>.card:nth-child(3) .ring{margin:auto}
+#habits .top>.card:first-child .mini-cal{margin-top:16px}
+#habits .card-title{line-height:1.5;margin-bottom:14px}
+#habits .pt-habit-mode{margin:0 0 9px;background:var(--s2);border:1px solid var(--line);border-radius:10px;padding:9px}
+#habits .pt-habit-guide{margin:0 0 10px;background:var(--s2);border:1px solid var(--line);border-radius:10px;padding:9px}
+#habits .pt-habit-mode button,#habits .pt-habit-guide button{min-height:32px}
+#habits .grid-scroll{background:var(--surface);border:1px solid var(--line);border-radius:11px;padding:11px 8px 7px}
+#habits .habit-pct{display:inline-block;width:auto;min-width:39px;padding:5px 6px;border-radius:7px;background:var(--s2);border:1px solid var(--line)}
+#habits .summary{background:var(--s2);border:1px solid var(--line);border-radius:9px;margin-top:13px;padding:12px 13px}
+#habits .bottom>.card{min-width:0}
+#habits .week-item{border:1px solid var(--line);border-radius:11px}
+@media(max-width:1050px){
+ #habits .top{grid-template-columns:minmax(0,1fr) minmax(0,1.5fr)}
+ #habits .top>.card:nth-child(3){grid-column:1/-1}
+}
+@media(max-width:850px){
+ #habits .top{grid-template-columns:1fr}
+ #habits .top>.card:nth-child(3){grid-column:auto}
+}
+@media(max-width:500px){
+ #habits .toolbar>.group{width:100%;justify-content:flex-start}
+ #habits .toolbar>.group:last-child button,#habits .toolbar>.group:last-child .btn{flex:1}
+}
+
 </style>
 </head>
 <body>
@@ -2056,7 +2091,7 @@ function exportHabitPDF(){
  doc.text('DAY OF MONTH',20,145);
  doc.text('Only elapsed days are plotted.',277,145,{align:'right'});
 
- // Pie segments ranked by number of completed days, with a separate color per habit.
+ // Pie segments ranked by individual Days %, with a separate color for each habit.
  panel(13,153,271,39);
  text('HABIT DAYS %',19,160,8.7,true);
  const cx=39,cy=175,r=14;
@@ -2071,18 +2106,40 @@ function exportHabitPDF(){
   fill(colorRgb);doc.lines(segments,cx,cy,[1,1],'F',true);
  }
  let angle=-Math.PI/2;
+ const smallSliceLabels=[];
  if(totalDaysPct>0){
   ranked.forEach(h=>{
    const sweep=2*Math.PI*h.daysPct/totalDaysPct;
    drawSlice(angle,sweep,h.color);
-   // Large slices can show their exact checklist Days % inside the pie.
-   if(h.pieWeight>=18){
+   if(h.daysPct>0){
     const midpoint=angle+sweep/2;
-    fg([255,255,255]);doc.setFont('helvetica','bold');doc.setFontSize(7.1);
-    doc.text(h.daysPct+'%',cx+Math.cos(midpoint)*8.8,cy+Math.sin(midpoint)*8.8+1.8,{align:'center'});
+    // Every active habit is labeled. Narrow slices get external leader lines.
+    if(h.pieWeight>=20){
+     fg([255,255,255]);doc.setFont('helvetica','bold');doc.setFontSize(7);
+     doc.text(h.daysPct+'%',cx+Math.cos(midpoint)*8.6,cy+Math.sin(midpoint)*8.6+1.7,{align:'center'});
+    }else{
+     smallSliceLabels.push({value:h.daysPct+'%',angle:midpoint,color:h.color});
+    }
    }
    angle+=sweep;
   });
+  // Keep percentages readable even when 6+ habits divide the pie.
+  for(const side of ['left','right']){
+   const items=smallSliceLabels.filter(h=>(Math.cos(h.angle)>=0?'right':'left')===side)
+    .sort((a,b)=>Math.sin(a.angle)-Math.sin(b.angle));
+   const gap=items.length>9?2.45:items.length>6?3.25:4.65;
+   const startY=175.3-(items.length-1)*gap/2;
+   items.forEach((h,i)=>{
+    const labelY=startY+i*gap;
+    const tipX=cx+Math.cos(h.angle)*r,tipY=cy+Math.sin(h.angle)*r;
+    const elbowX=side==='right'?54:24;
+    stroke(h.color);doc.setLineWidth(.33);
+    doc.line(tipX,tipY,elbowX,labelY);
+    fill(h.color);doc.circle(tipX,tipY,.55,'F');
+    fg(h.color);doc.setFont('helvetica','bold');doc.setFontSize(items.length>9?5.4:6.9);
+    doc.text(h.value,side==='right'?55:23,labelY+1.7,{align:side==='right'?'left':'right'});
+   });
+  }
  }else{
   fill([224,232,226]);doc.circle(cx,cy,r,'F');
   fg(muted);doc.setFont('helvetica','bold');doc.setFontSize(6.5);
