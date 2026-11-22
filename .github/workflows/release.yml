@@ -28,6 +28,19 @@ jobs:
           assert count == 1, 'Update configuration missing'
           root.joinpath('index.html').write_text(source, encoding='utf-8')
           root.joinpath('icon.ico').write_bytes(base64.b64decode(root.joinpath('icon.base64').read_text()))
+      - name: Verify tracker JavaScript syntax
+        shell: python
+        run: |
+          from pathlib import Path
+          import subprocess
+          source = Path('index.html').read_text(encoding='utf-8')
+          marker = '<script>\n const $=id=>document.getElementById(id);'
+          assert marker in source, 'Main tracker script not found'
+          script = source.split(marker, 1)[1].split('</script>', 1)[0]
+          assert 'function ptRenderHabitPerformanceChart' in script
+          assert 'function exportHabitPDF' in script
+          assert 'function checklistPage' in script
+          subprocess.run(['node', '--check', '-'], input=' const $=id=>document.getElementById(id);'+script, text=True, check=True)
       - name: Install build dependencies
         run: python -m pip install -r requirements.txt
       - name: Build application
