@@ -40,8 +40,12 @@ jobs:
           assert 'function ptRenderHabitPerformanceChart' in script
           assert 'function exportHabitPDF' in script
           pdf = source.split('function exportHabitPDF(){', 1)[1].split('// ACHIEVEMENT ENGINE', 1)[0]
-          assert 'const ranked=habits.map' in pdf, 'Per-habit pie data missing'
-          assert '.sort((a,b)=>b.completed-a.completed' in pdf, 'Habit ranking missing'
+          assert 'daysPct:ptHabitDaysPercent(h,hYear,hMonth)' in pdf, 'Pie does not use checklist Days percent'
+          assert '.sort((a,b)=>b.daysPct-a.daysPct' in pdf, 'Habit ranking must use Days percent'
+          assert "const percent=habit.daysPct+'%'" in pdf, 'Legend must display exact Days percent'
+          assert 'ptChartPrefs.habitGoodPct/100' in pdf, 'PDF chart must use custom Good Level'
+          assert 'function ptApplyHabitGoodLevel' in script, 'Missing Good Level setting'
+          assert 'function ptHabitDaysPercent' in script, 'Missing shared Days percent formula'
           assert 'function drawSlice' in pdf, 'Colored habit pie renderer missing'
           assert "'Completed',p:" not in pdf, 'Old completed/remaining slices still present'
           assert 'function checklistPage' not in pdf, 'Checklist must not be exported'

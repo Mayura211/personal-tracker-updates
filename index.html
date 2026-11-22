@@ -606,6 +606,9 @@ nav{flex-wrap:wrap}
 /* Study, Sleep and Habit chart customization */
 .pt-habit-mode{justify-content:flex-start;gap:5px;flex-wrap:wrap;margin:4px 0 12px}
 .pt-habit-mode button{padding:7px 9px;font-size:11px}
+.pt-habit-guide{justify-content:flex-start;margin:0 0 10px;gap:8px}
+.pt-habit-guide input{width:69px;min-width:69px}
+.pt-habit-guide button{background:var(--green);color:white}
 .pt-chart-tools{display:flex;flex-direction:column;gap:12px;background:var(--s2);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin:0 0 16px}
 .pt-chart-mode-toolbar,.pt-chart-goal{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .pt-chart-mode-toolbar{justify-content:flex-end}
@@ -711,6 +714,12 @@ nav{flex-wrap:wrap}
     <button type="button" data-pt-chart="habit" data-pt-style="bar" onclick="ptSetChartStyle('habit','bar')">Bar Only</button>
     <button type="button" data-pt-chart="habit" data-pt-style="line" onclick="ptSetChartStyle('habit','line')">Line Only</button>
     <button type="button" data-pt-chart="habit" data-pt-style="both" onclick="ptSetChartStyle('habit','both')">Both</button>
+   </div>
+   <div class="pt-chart-goal pt-habit-guide">
+    <label for="pt-habit-good-level">Good Level</label>
+    <input id="pt-habit-good-level" type="number" min="0" max="100" step="1" value="50" inputmode="numeric" aria-label="Custom good level percentage" onkeydown="if(event.key==='Enter')ptApplyHabitGoodLevel()">
+    <span>% of habits</span>
+    <button type="button" onclick="ptApplyHabitGoodLevel()">Apply</button>
    </div>
    <div class="chart"><canvas id="habitLine"></canvas></div>
    <div id="habitGoodLevel" class="label" hidden></div>
@@ -1102,6 +1111,16 @@ function scheduled(h,y,m,d){
 function scheduledCount(h,y,m){
  return Array.from({length:monthDays(y,m)},(_,i)=>i+1).filter(d=>scheduled(h,y,m,d)).length;
 }
+// Single Days % formula shared by the checklist and the exported habit pie.
+function ptHabitDaysPercent(h,y,m){
+ const scheduledDays=scheduledCount(h,y,m);
+ if(!scheduledDays)return 0;
+ let checked=0;
+ for(let d=1;d<=monthDays(y,m);d++){
+  if(scheduled(h,y,m,d)&&isHabitChecked(y,m,h,d))checked++;
+ }
+ return Math.min(100,Math.round(checked/scheduledDays*100));
+}
 
 function addHabit(){openHabitEditor()}
 function editHabit(id){openHabitEditor(id)}
@@ -1262,11 +1281,7 @@ function renderHabits(){
    </div>`;
   }
 
-  let hCheckedCount=0;
-  for(let d=1; d<=days; d++){
-   if(scheduled(h,hYear,hMonth,d)&&isHabitChecked(hYear,hMonth,h,d)) hCheckedCount++;
-  }
-  let hPct=Math.min(100, Math.round(hCheckedCount/Math.max(1,scheduledCount(h,hYear,hMonth))*100));
+  const hPct=ptHabitDaysPercent(h,hYear,hMonth);
   html+=`<div style="display:flex;align-items:center;justify-content:flex-end;"><span class="habit-pct"><b>${hPct}%</b></span></div>`;
  });
 
@@ -1283,11 +1298,11 @@ function renderHabits(){
 
  makeChart('habitRing','doughnut',['Completed','Remaining'],
   [pct,100-pct],{cutout:'82%',plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>' '+c.label+': '+c.parsed+'%'}}}});
- const habitMax=Math.max(1,habits.length);
- const goodLevel=habitMax/2;
+ const habitMax=habits.length,goodPct=ptChartPrefs.habitGoodPct;
+ const goodCount=Math.ceil(habitMax*goodPct/100);
  const goodLabel=$('habitGoodLevel');
  goodLabel.hidden=!habits.length;
- goodLabel.textContent=`Good level · 50% (${goodLevel} of ${habitMax} habits)`;
+ goodLabel.textContent=`Good level · ${goodPct}% (complete at least ${goodCount} of ${habitMax} habits per day)`;
  ptRenderHabitPerformanceChart(daily,habits,t);
 
  const mShort=monthNames[hMonth].slice(0,3);
@@ -1437,7 +1452,7 @@ function ptRenderHabitPerformanceChart(daily,habits,cutoff){
    responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
    layout:{padding:{top:12,right:8}},
    plugins:{legend:{display:false},
-    ptReferenceLines:{lines:habits.length?[{value:habits.length/2,label:'Good level (50%)',color:'#477b55'}]:[]},
+    ptReferenceLines:{lines:habits.length?[{value:habits.length*ptChartPrefs.habitGoodPct/100,label:'Good level ('+ptChartPrefs.habitGoodPct+'%)',color:'#477b55'}]:[]},
     tooltip:{enabled:true,filter:item=>mode==='both'?item.datasetIndex===0:true,
      callbacks:{label:c=>' '+c.parsed.y+' habits completed'}}},
    scales:{
@@ -1534,7 +1549,7 @@ function studySeries(records,view,y,m){
 }
 
 // User-specific chart display settings; existing study/sleep data is unchanged.
-const PT_CHART_DEFAULTS=Object.freeze({habitStyle:'both',studyStyle:'both',sleepStyle:'both',studyGoal:2,sleepLow:6,sleepMid:7,sleepHigh:8});
+const PT_CHART_DEFAULTS=Object.freeze({habitStyle:'both',habitGoodPct:50,studyStyle:'both',sleepStyle:'both',studyGoal:2,sleepLow:6,sleepMid:7,sleepHigh:8});
 let ptChartPrefs={...PT_CHART_DEFAULTS};
 function ptChartKey(){
  return 'pt_chart_preferences_'+(typeof ptCurrentUser==='string'&&ptCurrentUser?ptCurrentUser:'guest');
@@ -1575,6 +1590,7 @@ function ptLoadChartPrefs(){
   const prefs=JSON.parse(localStorage.getItem(ptChartKey())||'{}');
   if(prefs&&typeof prefs==='object'&&!Array.isArray(prefs)){
    for(const key of ['habitStyle','studyStyle','sleepStyle'])if(ptChartValidMode(prefs[key]))ptChartPrefs[key]=prefs[key];
+   if(ptChartValidNumber(prefs.habitGoodPct,0,100) && Number.isInteger(prefs.habitGoodPct))ptChartPrefs.habitGoodPct=prefs.habitGoodPct;
    if(ptChartValidNumber(prefs.studyGoal,.25,24))ptChartPrefs.studyGoal=prefs.studyGoal;
    if(ptChartValidNumber(prefs.sleepLow,.25,23)&&ptChartValidNumber(prefs.sleepMid,.5,23.5)&&ptChartValidNumber(prefs.sleepHigh,1,24)
       &&prefs.sleepLow<prefs.sleepMid&&prefs.sleepMid<prefs.sleepHigh){
@@ -1584,6 +1600,7 @@ function ptLoadChartPrefs(){
  }catch(e){}
  const inputs=[['pt-study-goal',ptChartPrefs.studyGoal],['pt-sleep-low',ptChartPrefs.sleepLow],['pt-sleep-mid',ptChartPrefs.sleepMid],['pt-sleep-high',ptChartPrefs.sleepHigh]];
  for(const [id,value] of inputs){const input=$(id);if(input)input.value=ptDurationInputValue(value);}
+ const goodPctInput=$('pt-habit-good-level');if(goodPctInput)goodPctInput.value=ptChartPrefs.habitGoodPct;
  ptSyncChartStyle('habit');ptSyncChartStyle('study');ptSyncChartStyle('sleep');
  const m1=$('pt-study-chart-message'),m2=$('pt-sleep-chart-message');
  if(m1)m1.textContent='';if(m2)m2.textContent='';
@@ -1605,6 +1622,20 @@ function ptSetChartStyle(kind,style){
  if(!['habit','study','sleep'].includes(kind)||!ptChartValidMode(style))return;
  ptChartPrefs[kind+'Style']=style;ptSaveChartPrefs();ptSyncChartStyle(kind);
  if(kind==='habit')renderHabits();else if(kind==='study')renderStudy();else renderSleep();
+}
+function ptApplyHabitGoodLevel(){
+ const field=$('pt-habit-good-level');
+ if(!field)return;
+ const raw=field.value.trim(),value=Number(raw);
+ if(raw===''||!Number.isInteger(value)||value<0||value>100){
+  field.setCustomValidity('Enter a whole percentage from 0 to 100.');
+  field.reportValidity();
+  return;
+ }
+ field.setCustomValidity('');
+ ptChartPrefs.habitGoodPct=value;
+ ptSaveChartPrefs();
+ renderHabits();
 }
 function ptApplyStudyGoal(){
  const goal=ptParseDurationInput($('pt-study-goal').value);
@@ -1922,15 +1953,13 @@ function exportHabitPDF(){
  const scheduledDaily=Array.from({length:days},(_,i)=>habits.filter(h=>scheduled(h,hYear,hMonth,i+1)).length);
  const done=sum(daily),possible=sum(scheduledDaily),completion=possible?Math.round(done/possible*100):0;
  const mode=ptChartPrefs.habitStyle||'both';
- // Each slice is a share of all completed habit checkmarks, NOT remaining days or individual goal %.
- const ranked=habits.map((h,index)=>{
-  let completed=0;
-  for(let day=1;day<=days;day++){
-   if(dateKey(hYear,hMonth,day)<=cutoff && scheduled(h,hYear,hMonth,day) && isHabitChecked(hYear,hMonth,h,day))completed++;
-  }
-  return {name:String(h.name),completed,index};
- }).sort((a,b)=>b.completed-a.completed || a.index-b.index);
- const totalChecked=ranked.reduce((count,h)=>count+h.completed,0);
+ // Match Daily Habit Checklist's right-hand "Days %" for EVERY habit.
+ // Pie wedges are normalized visual weights; displayed values remain the actual
+ // per-habit Days %, which are not parts of one 100% total.
+ const ranked=habits.map((h,index)=>({
+  name:String(h.name),daysPct:ptHabitDaysPercent(h,hYear,hMonth),index
+ })).sort((a,b)=>b.daysPct-a.daysPct||a.index-b.index);
+ const totalDaysPct=ranked.reduce((count,h)=>count+h.daysPct,0);
  const dark=[37,61,44],green=[71,127,83],ink=[44,62,49],muted=[109,122,111],edge=[218,230,220],paper=[247,250,247];
  const palette=[
   [58,139,91],[109,95,192],[48,144,190],[224,152,63],
@@ -1944,7 +1973,7 @@ function exportHabitPDF(){
  }
  ranked.forEach((h,i)=>{
   h.color=i<palette.length?palette[i]:hslRgb((i*137.508)%360,.55,.46);
-  h.share=totalChecked?100*h.completed/totalChecked:0;
+  h.pieWeight=totalDaysPct?100*h.daysPct/totalDaysPct:0;
  });
  const fill=c=>doc.setFillColor(...c),stroke=c=>doc.setDrawColor(...c),fg=c=>doc.setTextColor(...c);
  function text(s,x,y,size=9,bold=false,opts){
@@ -1996,11 +2025,11 @@ function exportHabitPDF(){
   doc.text(String(v),px-3,y+2,{align:'right'});
  }
  if(habits.length){
-  const gy=Y(habits.length/2);
+  const gy=Y(habits.length*ptChartPrefs.habitGoodPct/100);
   stroke([68,143,87]);doc.setLineWidth(.6);doc.setLineDashPattern([2.2,2],0);
   doc.line(px,gy,px+pw,gy);doc.setLineDashPattern([],0);
   fg(green);doc.setFont('helvetica','bold');doc.setFontSize(7);
-  doc.text('Good level 50%',px+pw-1,gy-2,{align:'right'});
+  doc.text('Good level '+ptChartPrefs.habitGoodPct+'%',px+pw-1,gy-2,{align:'right'});
  }
  if(mode==='bar'||mode==='both'){
   fill([167,205,175]);stroke([111,156,117]);doc.setLineWidth(.15);
@@ -2029,7 +2058,7 @@ function exportHabitPDF(){
 
  // Pie segments ranked by number of completed days, with a separate color per habit.
  panel(13,153,271,39);
- text('HABIT CONTRIBUTION',19,160,8.7,true);
+ text('HABIT DAYS %',19,160,8.7,true);
  const cx=39,cy=175,r=14;
  function drawSlice(angle,sweep,colorRgb){
   if(sweep<=0)return;
@@ -2042,14 +2071,15 @@ function exportHabitPDF(){
   fill(colorRgb);doc.lines(segments,cx,cy,[1,1],'F',true);
  }
  let angle=-Math.PI/2;
- if(totalChecked>0){
+ if(totalDaysPct>0){
   ranked.forEach(h=>{
-   const sweep=2*Math.PI*h.completed/totalChecked;
+   const sweep=2*Math.PI*h.daysPct/totalDaysPct;
    drawSlice(angle,sweep,h.color);
-   if(h.share>=17){
+   // Large slices can show their exact checklist Days % inside the pie.
+   if(h.pieWeight>=18){
     const midpoint=angle+sweep/2;
-    fg([255,255,255]);doc.setFont('helvetica','bold');doc.setFontSize(7.3);
-    doc.text(h.share.toFixed(0)+'%',cx+Math.cos(midpoint)*8.8,cy+Math.sin(midpoint)*8.8+1.8,{align:'center'});
+    fg([255,255,255]);doc.setFont('helvetica','bold');doc.setFontSize(7.1);
+    doc.text(h.daysPct+'%',cx+Math.cos(midpoint)*8.8,cy+Math.sin(midpoint)*8.8+1.8,{align:'center'});
    }
    angle+=sweep;
   });
@@ -2061,7 +2091,7 @@ function exportHabitPDF(){
  stroke([255,255,255]);doc.setLineWidth(.5);doc.circle(cx,cy,r,'S');
 
  // Ranked color legend: every habit is included, including habits with 0 completed checks.
- text('SHARE OF ALL COMPLETED CHECKMARKS',66,161,8.5,true);
+ text('DAYS % BY HABIT (HIGHEST FIRST)',66,161,8.5,true);
  if(!ranked.length){
   text('No habits are configured for this month.',66,176,9);
  }else{
@@ -2073,7 +2103,7 @@ function exportHabitPDF(){
   ranked.forEach((habit,i)=>{
    const col=Math.floor(i/rows),row=i%rows;
    const x=x0+col*columnW,y=167+row*rowStep;
-   const percent=habit.share.toFixed(1)+'%';
+   const percent=habit.daysPct+'%';
    fill(habit.color);doc.roundedRect(x,y-3.2,3.5,3.5,.55,.55,'F');
    fg(ink);doc.setFont('helvetica','bold');doc.setFontSize(size);
    doc.text(percent,x+columnW-2,y,{align:'right'});
@@ -2084,7 +2114,7 @@ function exportHabitPDF(){
   });
  }
 
- // One-page footer; zero-count habits appear as 0.0% in the legend.
+ // One-page footer; the legend is the checklist's exact Days % (not a sum-to-100 share).
  stroke(edge);doc.setLineWidth(.3);doc.line(13,197,284,197);
  fg(muted);doc.setFont('helvetica','normal');doc.setFontSize(8);
  doc.text('Personal Tracker  |  '+period+'  |  Generated '+new Date().toLocaleDateString(),13,203);
