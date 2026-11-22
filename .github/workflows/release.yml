@@ -40,7 +40,10 @@ jobs:
           assert 'function ptRenderHabitPerformanceChart' in script
           assert 'function exportHabitPDF' in script
           pdf = source.split('function exportHabitPDF(){', 1)[1].split('// ACHIEVEMENT ENGINE', 1)[0]
-          assert 'function pieSlice' in pdf, 'Monthly completion pie chart missing'
+          assert 'const ranked=habits.map' in pdf, 'Per-habit pie data missing'
+          assert '.sort((a,b)=>b.completed-a.completed' in pdf, 'Habit ranking missing'
+          assert 'function drawSlice' in pdf, 'Colored habit pie renderer missing'
+          assert "'Completed',p:" not in pdf, 'Old completed/remaining slices still present'
           assert 'function checklistPage' not in pdf, 'Checklist must not be exported'
           assert 'doc.addPage' not in pdf, 'Habit PDF must use a single page'
           subprocess.run(['node', '--check', '-'], input='const $=id=>document.getElementById(id);'+script, text=True, encoding='utf-8', check=True)
