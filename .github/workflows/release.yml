@@ -40,7 +40,7 @@ jobs:
           assert 'function ptRenderHabitPerformanceChart' in script
           assert 'function exportHabitPDF' in script
           assert 'function checklistPage' in script
-          subprocess.run(['node', '--check', '-'], input=' const $=id=>document.getElementById(id);'+script, text=True, check=True)
+          subprocess.run(['node', '--check', '-'], input='const $=id=>document.getElementById(id);'+script, text=True, encoding='utf-8', check=True)
       - name: Install build dependencies
         run: python -m pip install -r requirements.txt
       - name: Build application
