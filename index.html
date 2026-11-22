@@ -1913,36 +1913,165 @@ $('importFile').onchange=e=>{
 };
 
 function exportHabitPDF(){
- if(!window.jspdf?.jsPDF){alert('PDF component unavailable. Check your internet connection.');return}
+ if(!window.jspdf?.jsPDF){alert('PDF component unavailable.');return;}
  const doc=new window.jspdf.jsPDF({orientation:'landscape',unit:'mm',format:'a4'});
- let y=25;
- function header(){
-  doc.setFontSize(16);doc.text(`Habit Tracker Report — ${monthNames[hMonth]} ${hYear}`,14,15);
-  doc.setFontSize(9);doc.text(`Account: ${ptCurrentUser || 'Guest'} | Generated: ${new Date().toLocaleString()}`,14,21);
+ const period=monthNames[hMonth]+' '+hYear,habits=getMonthHabits(hYear,hMonth),days=monthDays(hYear,hMonth),cutoff=today();
+ const daily=Array.from({length:days},(_,i)=>ptDoneOn(hYear,hMonth,i+1));
+ const scheduledDaily=Array.from({length:days},(_,i)=>habits.filter(h=>scheduled(h,hYear,hMonth,i+1)).length);
+ const completed=sum(daily),possible=sum(scheduledDaily),pct=possible?Math.min(100,Math.round(completed*100/possible)):0;
+ const mode=ptChartPrefs.habitStyle||'both',W=297,H=210,M=13;
+ const deep=[36,61,42],green=[73,120,81],muted=[105,120,108],ink=[44,62,48],edge=[217,230,219],paper=[247,250,247];
+ const fill=c=>doc.setFillColor(...c),stroke=c=>doc.setDrawColor(...c),color=c=>doc.setTextColor(...c);
+ function txt(s,x,y,size=9,bold=false,options){
+  doc.setFont('helvetica',bold?'bold':'normal');doc.setFontSize(size);color(ink);
+  doc.text(String(s),x,y,options||{});
  }
- header();
- 
- const habits=getMonthHabits(hYear,hMonth);
- const days=monthDays(hYear,hMonth);
- 
- doc.setFont(undefined,'bold');doc.setFontSize(10);
- doc.text('Habit Name & Monthly Targets & Completion:',14,y+6); y+=12;
- 
- habits.forEach((h, idx)=>{
-  if(y>180){doc.addPage();header();y=25}
-  let completedCount=0;
-  for(let d=1; d<=days; d++){
-   if(scheduled(h,hYear,hMonth,d)&&isHabitChecked(hYear,hMonth,h,d)) completedCount++;
+ function frame(section){
+  fill(paper);doc.rect(0,0,W,H,'F');fill(deep);doc.rect(0,0,W,35,'F');
+  doc.setFont('helvetica','bold');doc.setFontSize(19);color([255,255,255]);doc.text('PERSONAL TRACKER',M,16);
+  doc.setFont('helvetica','normal');doc.setFontSize(9);doc.text(section,M,24);
+  doc.setFont('helvetica','bold');doc.setFontSize(12);doc.text(period,W-M,16,{align:'right'});
+  doc.setFont('helvetica','normal');doc.setFontSize(8.2);
+  doc.text('Account: '+(ptCurrentUser||'Guest'),W-M,24,{align:'right'});
+ }
+ function panel(x,y,w,h){
+  fill([255,255,255]);stroke(edge);doc.setLineWidth(.3);doc.roundedRect(x,y,w,h,3,3,'FD');
+ }
+ function stat(x,label,value,detail){
+  panel(x,42,63.5,28);
+  color(muted);doc.setFont('helvetica','bold');doc.setFontSize(8);doc.text(label.toUpperCase(),x+5,50);
+  color(deep);doc.setFontSize(16);doc.text(String(value),x+5,60);
+  color(muted);doc.setFont('helvetica','normal');doc.setFontSize(7.4);doc.text(detail,x+5,66);
+ }
+ frame('MONTHLY HABIT PERFORMANCE REPORT');
+ stat(13,'Completed',completed,'Scheduled days checked');
+ stat(82,'Scheduled',possible,'Possible monthly checks');
+ stat(151,'Completion',pct+'%','Monthly progress');
+ stat(220,'Habits',habits.length,'This month');
+
+ // High-resolution vector rendition of the selected Bar / Line / Both chart.
+ panel(M,76,W-M*2,116);
+ txt('DAILY HABIT PERFORMANCE (THIS MONTH)',M+6,88,12,true);
+ color(muted);doc.setFont('helvetica','normal');doc.setFontSize(8);
+ doc.text('View: '+(mode==='both'?'Bar + Line':mode==='bar'?'Bar only':'Line only'),W-M-6,88,{align:'right'});
+ const px=29,py=103,pw=247,ph=71,maximum=Math.max(1,habits.length),mid=habits.length/2;
+ const X=i=>px+(i+.5)*pw/days,Y=v=>py+ph-v/maximum*ph;
+ for(let tick=0;tick<=4;tick++){
+  const val=maximum*tick/4,yy=Y(val);
+  stroke([228,236,229]);doc.setLineWidth(.25);doc.line(px,yy,px+pw,yy);
+  color(muted);doc.setFont('helvetica','normal');doc.setFontSize(7);
+  doc.text(Number.isInteger(val)?String(val):val.toFixed(1),px-3,yy+2,{align:'right'});
+ }
+ if(habits.length){
+  const gy=Y(mid);stroke([73,142,86]);doc.setLineWidth(.55);doc.setLineDashPattern([2,2],0);
+  doc.line(px,gy,px+pw,gy);doc.setLineDashPattern([],0);
+  color(green);doc.setFont('helvetica','bold');doc.setFontSize(7.2);
+  doc.text('Good level (50%)',px+pw-1,gy-2,{align:'right'});
+ }
+ const values=daily.map((v,i)=>dateKey(hYear,hMonth,i+1)<=cutoff?v:null);
+ if(mode==='both'||mode==='bar'){
+  fill([173,206,176]);stroke([110,160,115]);doc.setLineWidth(.15);
+  const width=Math.min(4.7,pw/days*.57);
+  values.forEach((v,i)=>{
+   if(v===null||v<=0)return;
+   const x=X(i)-width/2,y=Y(v);
+   doc.roundedRect(x,y,width,Math.max(.5,py+ph-y),.4,.4,'FD');
+  });
+ }
+ if(mode==='both'||mode==='line'){
+  stroke(green);doc.setLineWidth(.85);
+  for(let i=1;i<days;i++)if(values[i]!==null&&values[i-1]!==null)
+   doc.line(X(i-1),Y(values[i-1]),X(i),Y(values[i]));
+  fill(green);values.forEach((v,i)=>{if(v!==null)doc.circle(X(i),Y(v),.8,'F');});
+ }
+ for(let d=1;d<=days;d++)if(d===1||d===days||d%5===0){
+  color(muted);doc.setFont('helvetica','normal');doc.setFontSize(7.2);
+  doc.text(String(d),X(d-1),py+ph+6,{align:'center'});
+ }
+ txt('DAY OF MONTH',M+7,187,7.5,true);
+ color(muted);doc.setFont('helvetica','normal');doc.setFontSize(7.4);
+ doc.text('Future dates are not plotted.',W-M-7,187,{align:'right'});
+
+ const tableX=M,tableW=W-2*M,nameW=68,totalW=21,dayW=(tableW-nameW-totalW)/days;
+ const headY=66,headH=13,rowH=10.2,rowLimit=190;
+ function legend(){
+  let x=M;
+  for(const item of [
+   ['Completed',[85,146,99]],['Not completed',[255,255,255]],
+   ['Not scheduled',[231,238,231]],['Future',[221,228,221]]
+  ]){
+   fill(item[1]);stroke(edge);doc.setLineWidth(.25);doc.rect(x,49,4,4,'FD');
+   color(ink);doc.setFont('helvetica','normal');doc.setFontSize(7.8);
+   doc.text(item[0],x+6,52.2);x+=item[0]==='Not scheduled'?44:40;
   }
-  const scheduledDays=scheduledCount(h,hYear,hMonth);
-  let pct=Math.min(100, Math.round(completedCount/scheduledDays*100));
-  doc.setFont(undefined,'normal');doc.setFontSize(9);
-  doc.text(`${idx+1}. ${h.name} (Monthly Target: ${Math.min(h.target,scheduledDays)} days) — Completed: ${completedCount}/${scheduledDays} scheduled days (${pct}%)`, 14, y);
-  y+=7;
+ }
+ function checklistPage(){
+  doc.addPage();frame('DAILY HABIT CHECKLIST');
+  txt('DAILY HABIT CHECKLIST',M,43,13,true);legend();
+  txt('Month-isolated habit schedule and daily completion',M,60,8.3);
+  fill(deep);doc.roundedRect(tableX,headY,tableW,headH,1.5,1.5,'F');
+  color([255,255,255]);doc.setFont('helvetica','bold');doc.setFontSize(8.2);
+  doc.text('HABIT / TARGET',tableX+3,headY+8);
+  doc.text('DAYS %',tableX+tableW-totalW/2,headY+8,{align:'center'});
+  for(let d=1;d<=days;d++){
+   const x=tableX+nameW+(d-.5)*dayW;
+   const dow=['S','M','T','W','T','F','S'][new Date(hYear,hMonth,d).getDay()];
+   doc.setFontSize(7);doc.text(String(d),x,headY+6,{align:'center'});
+   doc.setFontSize(6);doc.text(dow,x,headY+10.6,{align:'center'});
+  }
+ }
+ checklistPage();
+ let y=headY+headH;
+ if(!habits.length){panel(tableX,y+4,tableW,25);txt('No habits for this month.',tableX+7,y+18,10);}
+ habits.forEach((h,index)=>{
+  if(y+rowH>rowLimit){checklistPage();y=headY+headH;}
+  fill(index%2?[247,250,247]:[255,255,255]);doc.rect(tableX,y,tableW,rowH,'F');
+  stroke(edge);doc.setLineWidth(.2);doc.line(tableX,y+rowH,tableX+tableW,y+rowH);
+  const count=scheduledCount(h,hYear,hMonth);
+  let name=String(h.name);
+  doc.setFont('helvetica','normal');doc.setFontSize(8.1);
+  while(name.length>3&&doc.getTextWidth(name)>nameW-6)name=name.slice(0,-1);
+  if(name!==String(h.name))name=name.slice(0,-3)+'...';
+  txt(name,tableX+3,y+4.5,8.1);
+  txt('Target '+Math.min(h.target,count)+' of '+count+' scheduled days',tableX+3,y+8.2,6.6);
+  let checked=0;
+  for(let d=1;d<=days;d++){
+   const cx=tableX+nameW+(d-1)*dayW,isActive=scheduled(h,hYear,hMonth,d);
+   const future=dateKey(hYear,hMonth,d)>cutoff;
+   const tick=isActive&&!future&&isHabitChecked(hYear,hMonth,h,d);
+   if(tick)checked++;
+   if(!isActive){
+    fill([235,239,235]);doc.rect(cx+.5,y+2,dayW-1,rowH-4,'F');
+    stroke([170,186,173]);doc.setLineWidth(.3);doc.line(cx+1.6,y+rowH/2,cx+dayW-1.6,y+rowH/2);
+   }else if(future){
+    fill([226,233,226]);doc.roundedRect(cx+1,y+2.5,dayW-2,rowH-5,.5,.5,'F');
+   }else if(tick){
+    fill([85,146,99]);doc.roundedRect(cx+1,y+2.4,dayW-2,rowH-4.8,.6,.6,'F');
+    stroke([255,255,255]);doc.setLineWidth(.6);
+    doc.line(cx+1.5,y+5.1,cx+2.45,y+6);doc.line(cx+2.45,y+6,cx+dayW-1.35,y+3.8);
+   }else{
+    stroke([196,208,198]);doc.setLineWidth(.4);doc.roundedRect(cx+1,y+2.4,dayW-2,rowH-4.8,.6,.6,'S');
+   }
+  }
+  txt((count?Math.min(100,Math.round(checked/count*100)):0)+'%',tableX+tableW-totalW/2,y+4.5,8,true,{align:'center'});
+  txt(checked+'/'+count,tableX+tableW-totalW/2,y+8.1,6.7,false,{align:'center'});
+  y+=rowH;
  });
- 
- savePdf(doc,`habit-tracker-${monthNames[hMonth]}-${hYear}.pdf`);
+ if(y+14>rowLimit){checklistPage();y=headY+headH;}
+ fill([233,242,234]);doc.roundedRect(tableX,y+3,tableW,11,2,2,'F');
+ txt('MONTHLY TOTAL',tableX+4,y+10.5,9,true);
+ txt(completed+' / '+possible+' checks   |   '+pct+'% completion',tableX+tableW-4,y+10.5,9,true,{align:'right'});
+ // Page numbers and generation metadata.
+ const pages=doc.internal.getNumberOfPages();
+ for(let p=1;p<=pages;p++){
+  doc.setPage(p);stroke(edge);doc.setLineWidth(.3);doc.line(M,198,W-M,198);
+  color(muted);doc.setFont('helvetica','normal');doc.setFontSize(8);
+  doc.text('Personal Tracker  |  '+period+'  |  Generated '+new Date().toLocaleDateString(),M,203);
+  doc.text('Page '+p+' of '+pages,W-M,203,{align:'right'});
+ }
+ savePdf(doc,'habit-tracker-'+monthNames[hMonth]+'-'+hYear+'.pdf');
 }
+
 
 // ACHIEVEMENT ENGINE
 const TIERS=['Legendary Tier · Chad','Legendary Tier · Giga Chad','Legendary Tier · Ultra Chad','Legendary Tier · God Tier','Habit Mastery'];
