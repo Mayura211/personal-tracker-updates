@@ -34,7 +34,7 @@ jobs:
           from pathlib import Path
           import subprocess
           source = Path('index.html').read_text(encoding='utf-8')
-          marker = '<script>\n const $=id=>document.getElementById(id);'
+          marker = '<script>\nconst $=id=>document.getElementById(id);'
           assert marker in source, 'Main tracker script not found'
           script = source.split(marker, 1)[1].split('</script>', 1)[0]
           assert 'function ptRenderHabitPerformanceChart' in script
